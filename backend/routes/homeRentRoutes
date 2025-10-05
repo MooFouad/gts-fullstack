@@ -1,0 +1,105 @@
+const express = require('express');
+const router = express.Router();
+const HomeRent = require('../models/HomeRent');
+
+// GET all home rents
+router.get('/', async (req, res) => {
+  try {
+    const { status, search } = req.query;
+    let query = {};
+    
+    if (status && status !== 'all') {
+      const today = new Date().toISOString().split('T')[0];
+      
+      if (status === 'expired') {
+        query.contractEndingDate = { $lt: today };
+      } else if (status === 'warning') {
+        const thirtyDaysFromNow = new Date();
+        thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+        query.$or = [
+          { firstPaymentDate: { $lte: thirtyDaysFromNow.toISOString().split('T')[0], $gte: today } },
+          { secondPaymentDate: { $lte: thirtyDaysFromNow.toISOString().split('T')[0], $gte: today } },
+          { thirdPaymentDate: { $lte: thirtyDaysFromNow.toISOString().split('T')[0], $gte: today } },
+          { fourthPaymentDate: { $lte: thirtyDaysFromNow.toISOString().split('T')[0], $gte: today } }
+        ];
+      } else if (status === 'valid') {
+        query.contractStatus = 'Active';
+        query.contractEndingDate = { $gte: today };
+      }
+    }
+    
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { location: { $regex: search, $options: 'i' } },
+        { contractNumber: { $regex: search, $options: 'i' } },
+        { district: { $regex: search, $options: 'i' } }
+      ];
+    }
+    
+    const homeRents = await HomeRent.find(query).sort({ createdAt: -1 });
+    res.json(homeRents);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET single home rent
+router.get('/:id', async (req, res) => {
+  try {
+    const homeRent = await HomeRent.findById(req.params.id);
+    if (!homeRent) return res.status(404).json({ error: 'Home rent not found' });
+    res.json(homeRent);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// CREATE home rent
+router.post('/', async (req, res) => {
+  try {
+    const homeRent = new HomeRent(req.body);
+    await homeRent.save();
+    res.status(201).json(homeRent);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// UPDATE home rent
+router.put('/:id', async (req, res) => {
+  try {
+    const homeRent = await HomeRent.findByIdAndUpdate(
+      req.params.id, 
+      req.body, 
+      { new: true, runValidators: true }
+    );
+    if (!homeRent) return res.status(404).json({ error: 'Home rent not found' });
+    res.json(homeRent);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// DELETE home rent
+router.delete('/:id', async (req, res) => {
+  try {
+    const homeRent = await HomeRent.findByIdAndDelete(req.params.id);
+    if (!homeRent) return res.status(404).json({ error: 'Home rent not found' });
+    res.json({ message: 'Home rent deleted successfully', id: req.params.id });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET count
+router.get('/count/total', async (req, res) => {
+  try {
+    const count = await HomeRent.countDocuments();
+    res.json({ count });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+module.exports = router;
