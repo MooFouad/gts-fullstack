@@ -64,7 +64,7 @@ const HomeRentsContainer = () => {
         console.log('Updating home rent with data:', formDialog.data);
         await updateItem(formDialog.data._id, {
           ...formData,
-          _id: formDialog.data._id // Ensure _id is preserved
+          _id: formDialog.data._id
         });
       } else {
         await addItem(formData);
@@ -95,7 +95,6 @@ const HomeRentsContainer = () => {
       alert('Failed to export data to Excel. Please try again.');
     }
   };
-
 
   if (loading) {
     return (

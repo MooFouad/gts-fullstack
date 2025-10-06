@@ -5,39 +5,29 @@ const Vehicle = require('../models/Vehicle');
 // GET all vehicles
 router.get('/', async (req, res) => {
   try {
-    const { status, search } = req.query;
-    let query = {};
-    
-    if (status && status !== 'all') {
-      if (status === 'expired') {
-        query.$or = [
-          { licenseExpiryDate: { $lt: new Date().toISOString().split('T')[0] } },
-          { inspectionExpiryDate: { $lt: new Date().toISOString().split('T')[0] } }
-        ];
-      } else if (status === 'warning') {
-        const thirtyDaysFromNow = new Date();
-        thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
-        query.$or = [
-          { licenseExpiryDate: { $lte: thirtyDaysFromNow.toISOString().split('T')[0] } },
-          { inspectionExpiryDate: { $lte: thirtyDaysFromNow.toISOString().split('T')[0] } }
-        ];
-      } else if (status === 'valid') {
-        query.vehicleStatus = 'Active';
-      }
-    }
-    
-    if (search) {
-      query.$or = [
-        { plateNumber: { $regex: search, $options: 'i' } },
-        { vehicleMaker: { $regex: search, $options: 'i' } },
-        { vehicleModel: { $regex: search, $options: 'i' } },
-        { actualDriverName: { $regex: search, $options: 'i' } }
-      ];
-    }
-    
-    const vehicles = await Vehicle.find(query).sort({ createdAt: -1 });
-    res.json(vehicles);
+    console.log('Fetching vehicles...');
+    const vehicles = await Vehicle.find({})
+      .lean()
+      .sort({ createdAt: -1 });
+
+    // Format dates safely
+    const formattedVehicles = vehicles.map(vehicle => {
+      // Create new object with formatted dates
+      return {
+        ...vehicle,
+        licenseExpiryDate: vehicle.licenseExpiryDate ? 
+          new Date(vehicle.licenseExpiryDate).toISOString().split('T')[0] : null,
+        inspectionExpiryDate: vehicle.inspectionExpiryDate ? 
+          new Date(vehicle.inspectionExpiryDate).toISOString().split('T')[0] : null,
+        istemarahIssueDate: vehicle.istemarahIssueDate ? 
+          new Date(vehicle.istemarahIssueDate).toISOString().split('T')[0] : null,
+      };
+    });
+
+    console.log(`Found ${vehicles.length} vehicles`);
+    res.json(formattedVehicles);
   } catch (error) {
+    console.error('Error fetching vehicles:', error);
     res.status(500).json({ error: error.message });
   }
 });

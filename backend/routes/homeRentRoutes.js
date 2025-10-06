@@ -5,41 +5,31 @@ const HomeRent = require('../models/HomeRent');
 // GET all home rents
 router.get('/', async (req, res) => {
   try {
-    const { status, search } = req.query;
-    let query = {};
-    
-    if (status && status !== 'all') {
-      const today = new Date().toISOString().split('T')[0];
-      
-      if (status === 'expired') {
-        query.contractEndingDate = { $lt: today };
-      } else if (status === 'warning') {
-        const thirtyDaysFromNow = new Date();
-        thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
-        query.contractEndingDate = { 
-          $lte: thirtyDaysFromNow.toISOString().split('T')[0],
-          $gte: today
-        };
-      } else if (status === 'valid') {
-        const thirtyDaysFromNow = new Date();
-        thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
-        query.contractEndingDate = { $gt: thirtyDaysFromNow.toISOString().split('T')[0] };
-      }
-    }
-    
-    if (search) {
-      query.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { location: { $regex: search, $options: 'i' } },
-        { contractNumber: { $regex: search, $options: 'i' } },
-        { district: { $regex: search, $options: 'i' } }
-      ];
-    }
-    
-    const rents = await HomeRent.find(query).sort({ createdAt: -1 });
-    res.json(rents);
+    console.log('Fetching home rents...');
+    const homeRents = await HomeRent.find({}).lean();
+
+    const formattedRents = homeRents.map(rent => {
+      // Log raw data for debugging
+      console.log('Raw rent data:', {
+        id: rent._id,
+        startDate: rent.contractStartingDate,
+        endDate: rent.contractEndingDate,
+        rent: rent.rentAnnually
+      });
+
+      return {
+        ...rent,
+        contractStartingDate: rent.contractStartingDate || '',
+        contractEndingDate: rent.contractEndingDate || '',
+        rentAnnually: Number(rent.rentAnnually || 0),
+        amount: Number(rent.amount || 0)
+      };
+    });
+
+    console.log(`Found ${formattedRents.length} home rents`);
+    res.json(formattedRents);
   } catch (error) {
-    console.error('Error getting home rents:', error);
+    console.error('Error fetching home rents:', error);
     res.status(500).json({ error: error.message });
   }
 });

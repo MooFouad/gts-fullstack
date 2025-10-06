@@ -34,7 +34,7 @@ const electricityRoutes = require('./routes/electricityRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const testDataRoutes = require('./routes/testDataRoutes');
 
-//use routes
+// Use routes with correct paths
 app.use('/api/vehicles', vehicleRoutes);
 app.use('/api/home-rents', homeRentRoutes);
 app.use('/api/electricity', electricityRoutes);
@@ -50,52 +50,30 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Error Handler
+// Global error handler
 app.use((err, req, res, next) => {
-  console.error('Error details:', {
-    message: err.message,
-    stack: err.stack,
-    name: err.name,
-    path: req.path,
-    method: req.method
-  });
-
-  // Handle different types of errors
-  if (err.name === 'ValidationError') {
-    return res.status(400).json({ 
-      error: 'Validation Error', 
-      details: Object.values(err.errors).map(e => e.message)
-    });
-  }
-
-  if (err.name === 'MongoError' || err.name === 'MongoServerError') {
-    if (err.code === 11000) {
-      return res.status(409).json({ 
-        error: 'Duplicate Entry', 
-        details: 'This record already exists.'
-      });
-    }
-    return res.status(500).json({ 
-      error: 'Database Error', 
-      details: process.env.NODE_ENV === 'development' ? err.message : 'A database error occurred'
-    });
-  }
-
-  res.status(err.status || 500).json({ 
-    error: err.message || 'Something went wrong!',
-    details: process.env.NODE_ENV === 'development' ? err.stack : undefined
+  console.error('Server Error:', err);
+  res.status(500).json({ 
+    error: err.message || 'Internal Server Error',
+    path: req.path
   });
 });
 
-// start server
+// Handle 404s
+app.use((req, res) => {
+  console.log('404 Not Found:', req.path);
+  res.status(404).json({ error: `Route ${req.path} not found` });
+});
 
+// Start server
 const startServer = async () => {
-  const PORT = 5000; // Using standard port
+  const PORT = 5000;
   try {
     const server = app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📊 API: http://localhost:${PORT}/api`);
       console.log(`💚 Health: http://localhost:${PORT}/api/health`);
+      console.log(`📥 Import: http://localhost:${PORT}/api/import`); // Shows import endpoint
     });
 
     server.on('error', (err) => {

@@ -1,111 +1,130 @@
 const mongoose = require('mongoose');
 
 const homeRentSchema = new mongoose.Schema({
-  name: {
+  contractNumber: {
     type: String,
     required: true,
     trim: true
   },
-  location: {
+  contractStartingDate: { 
     type: String,
-    required: true
+    required: true,
+    set: v => {
+      if (!v) return '';
+      const date = new Date(v);
+      return date instanceof Date && !isNaN(date) 
+        ? date.toISOString().split('T')[0] 
+        : '';
+    }
   },
-  district: {
+  contractEndingDate: { 
     type: String,
-    default: ''
+    required: true,
+    set: v => {
+      if (!v) return '';
+      const date = new Date(v);
+      return date instanceof Date && !isNaN(date) 
+        ? date.toISOString().split('T')[0] 
+        : '';
+    }
   },
-  project: {
+  notice: {
     type: String,
-    default: ''
+    default: '',
+    trim: true
   },
-  contractNumber: {
-    type: String,
-    required: true
+  noticeDays: {
+    type: Number,
+    default: null
   },
-  contractStartingDate: {
+  paymentTerms: {
     type: String,
-    required: true
+    default: '3 Installments',
+    trim: true
   },
-  contractEndingDate: {
+  paymentType: {
     type: String,
-    required: true
+    default: 'cash',
+    trim: true
   },
-  contractStatus: {
+  paymentStatus: {
     type: String,
-    default: 'Active'
+    enum: ['Paid', 'Pending', 'Overdue'],
+    default: 'Pending'
   },
-  firstPaymentDate: {
-    type: String,
-    required: true
+  amount: {
+    type: Number,
+    default: 0
   },
-  secondPaymentDate: {
-    type: String,
-    required: true
-  },
-  thirdPaymentDate: {
-    type: String,
-    required: true
-  },
-  fourthPaymentDate: {
-    type: String,
-    required: true
-  },
-  rentAnnually: {
-    type: String,
-    required: true
+  rentAnnually: { 
+    type: Number,
+    default: 0,
+    set: v => Number(v) || 0
   },
   address: {
     type: String,
-    default: ''
+    default: '',
+    trim: true
   },
-  electricityMeterNumber: {
+  contactPerson: {
     type: String,
-    default: ''
+    default: '',
+    trim: true
   },
-  contactNo: {
+  gtsContact: {
     type: String,
-    default: ''
+    default: '',
+    trim: true
+  },
+  comments: {
+    type: String,
+    default: '',
+    trim: true
   },
   attachments: {
     type: Array,
     default: []
-  },
-  // Optional fields from your data
-  gts: {
-    type: String,
-    default: ''
-  },
-  bms: {
-    type: String,
-    default: ''
-  },
-  spd: {
-    type: String,
-    default: ''
-  },
-  note: {
-    type: String,
-    default: ''
-  },
-  duration: {
-    type: String,
-    default: ''
-  },
-  saudiElectricCompany: {
-    type: String,
-    default: ''
-  },
-  remarks: {
-    type: String,
-    default: ''
   }
 }, {
   timestamps: true
 });
 
-// Indexes
+// Virtual field for remaining days until notice period
+homeRentSchema.virtual('remainingDays').get(function() {
+  if (!this.contractEndingDate) return null;
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // Set to start of day
+  
+  const endDate = new Date(this.contractEndingDate);
+  endDate.setHours(0, 0, 0, 0); // Set to start of day
+  
+  // Calculate days until end date
+  const daysUntilEnd = Math.floor((endDate - today) / (1000 * 60 * 60 * 24));
+  
+  if (daysUntilEnd < 0) return -1; // Contract already ended
+  return daysUntilEnd; // Just return the days until end date
+});
+
+// Ensure virtual fields are included when converting to JSON
+homeRentSchema.set('toJSON', { virtuals: true });
+homeRentSchema.set('toObject', { virtuals: true });
+
+// Indexes for better query performance
 homeRentSchema.index({ contractNumber: 1 });
 homeRentSchema.index({ contractStatus: 1 });
 homeRentSchema.index({ contractEndingDate: 1 });
+homeRentSchema.index({ contractStartingDate: 1 });
+
+// Add date validation middleware
+homeRentSchema.pre('save', function(next) {
+  if (this.contractStartingDate && this.contractStartingDate instanceof Date) {
+    this.contractStartingDate.setHours(0, 0, 0, 0);
+  }
+  if (this.contractEndingDate && this.contractEndingDate instanceof Date) {
+    this.contractEndingDate.setHours(0, 0, 0, 0);
+  }
+  next();
+});
 
 module.exports = mongoose.model('HomeRent', homeRentSchema);

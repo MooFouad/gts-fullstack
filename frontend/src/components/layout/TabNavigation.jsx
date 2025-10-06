@@ -2,52 +2,50 @@ import React from 'react';
 import { Car, Home, Zap } from 'lucide-react';
 
 const TabNavigation = ({ activeTab, onTabChange, vehiclesCount, homeRentsCount, electricityCount }) => {
-const handleTabChange = (tab) => {
-    // Smooth transition
+  const handleTabChange = (tab) => {
     if (tab !== activeTab) {
       onTabChange(tab);
     }
   };
 
+  const tabClasses = (tab) =>
+    `flex items-center gap-2 px-4 sm:px-6 py-3 font-medium transition duration-200 rounded-t-lg ${
+      activeTab === tab
+        ? 'bg-white text-blue-600 shadow-sm border-t-2 border-blue-600'
+        : 'text-gray-600 hover:text-blue-600 hover:bg-white/60'
+    }`;
+
   return (
-    <div className="border-b overflow-x-auto bg-white sticky top-0 z-10">
-      <div className="flex flex-wrap sm:flex-nowrap min-w-max sm:min-w-0">
-      <button
-      onClick={() => handleTabChange('vehicles')}
-      className={`flex items-center gap-2 px-6 py-4 font-medium border-b-2 transition ${
-            activeTab === 'vehicles'
-            ? 'border-blue-500 text-blue-600'
-            : 'border-transparent text-gray-500 hover:text-gray-700'
-      }`}
-      >
-      <Car size={20} />
-      vehicles ({vehiclesCount})
-      </button>
-      <button
-      onClick={() => handleTabChange('homeRents')}
-      className={`flex items-center gap-2 px-6 py-4 font-medium border-b-2 transition ${
-            activeTab === 'homeRents'
-            ? 'border-blue-500 text-blue-600'
-            : 'border-transparent text-gray-500 hover:text-gray-700'
-      }`}
-      >
-      <Home size={20} />
-      Home Rents ({homeRentsCount})
-      </button>
-      <button
-      onClick={() => handleTabChange('electricity')}
-      className={`flex items-center gap-2 px-6 py-4 font-medium border-b-2 transition ${
-            activeTab === 'electricity'
-            ? 'border-blue-500 text-blue-600'
-            : 'border-transparent text-gray-500 hover:text-gray-700'
-      }`}
-      >
-      <Zap size={20} />
-      Electricity ({electricityCount})
-      </button>
+    <div className="border-b overflow-x-auto bg-gray-50 sticky top-0 z-10 shadow-sm">
+      <div className="max-w-7xl mx-auto px-4">
+        <div className="flex flex-wrap sm:flex-nowrap min-w-max sm:min-w-0 gap-2 sm:gap-4">
+          <button
+            onClick={() => handleTabChange('vehicles')}
+            className={tabClasses('vehicles')}
+          >
+            <Car size={20} />
+            <span className="capitalize">Vehicles ({vehiclesCount})</span>
+          </button>
+
+          <button
+            onClick={() => handleTabChange('homeRents')}
+            className={tabClasses('homeRents')}
+          >
+            <Home size={20} />
+            <span>Home Rents ({homeRentsCount})</span>
+          </button>
+
+          <button
+            onClick={() => handleTabChange('electricity')}
+            className={tabClasses('electricity')}
+          >
+            <Zap size={20} />
+            <span>Electricity ({electricityCount})</span>
+          </button>
+        </div>
       </div>
-</div>
-);
+    </div>
+  );
 };
 
 export default TabNavigation;

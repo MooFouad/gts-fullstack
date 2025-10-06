@@ -54,46 +54,39 @@ class ApiService {
     const config = {
       headers: {
         'Content-Type': 'application/json',
+        Accept: 'application/json',
         ...options.headers,
       },
       ...options,
-      // Add timeout
-      signal: AbortSignal.timeout(10000) // 10 second timeout
+      signal: AbortSignal.timeout(15000) // Increase timeout
     };
 
     try {
-      console.log(`🔄 Making API request to: ${endpoint}`);
-      console.log('Request config:', {
-        method: options.method,
-        url,
-        body: options.body ? JSON.parse(options.body) : undefined
-      });
-
+      console.log(`🔄 Request: ${options.method || 'GET'} ${url}`);
       const response = await fetch(url, config);
-      const responseData = await response.json().catch(() => ({
-        message: `Server responded with status ${response.status}`
-      }));
       
-      if (!response.ok) {
-        console.error('Server error response:', responseData);
-        throw new Error(responseData.error || responseData.message || `Server error: ${response.status}`);
+      if (response.status === 404) {
+        console.error(`❌ Route not found: ${url}`);
+        throw new Error(`API route not found: ${endpoint}`);
       }
 
-      console.log(`✅ API request successful:`, responseData);
-      return responseData;
-    } catch (error) {
-      console.error(`❌ API Error for ${endpoint}:`, {
-        message: error.message,
-        name: error.name,
-        endpoint,
-        requestBody: options.body
-      });
-      
-      if (error.name === 'AbortError') {
-        throw new Error('Request timed out. Please check your connection and try again.');
+      let data;
+      try {
+        data = await response.json();
+      } catch (parseError) {
+        console.error('Response parsing error:', parseError);
+        throw new Error('Invalid server response');
       }
-      
-      throw error; // Preserve the original error
+
+      if (!response.ok) {
+        console.error(`❌ Server error:`, data);
+        throw new Error(data.error || `Server error: ${response.status}`);
+      }
+
+      return data;
+    } catch (err) {
+      console.error(`❌ Request failed:`, err);
+      throw err;
     }
   }
 

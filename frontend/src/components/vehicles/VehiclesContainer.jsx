@@ -1,5 +1,4 @@
-// src/components/vehicles/VehiclesContainer.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import VehiclesTable from './VehiclesTable';
 import VehicleForm from './VehicleForm';
 import FormDialog from '../common/FormDialog';
@@ -15,6 +14,13 @@ const VehiclesContainer = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const { data: items, addItem, updateItem, deleteItem, loading, error } = useDataManagement('vehicle');
+
+  // Add debug logging
+  useEffect(() => {
+    console.log('Current items:', items);
+    console.log('Loading state:', loading);
+    if (error) console.error('Error state:', error);
+  }, [items, loading, error]);
 
   const filteredItems = items.filter((item) => {
     // Search filter
@@ -58,7 +64,7 @@ const VehiclesContainer = () => {
         console.log('Updating vehicle with data:', formDialog.data);
         await updateItem(formDialog.data._id, {
           ...formData,
-          _id: formDialog.data._id // Ensure _id is preserved
+          _id: formDialog.data._id
         });
       } else {
         await addItem(formData);
@@ -89,7 +95,6 @@ const VehiclesContainer = () => {
       alert('Failed to export data to Excel. Please try again.');
     }
   };
-
 
   if (loading) {
     return (

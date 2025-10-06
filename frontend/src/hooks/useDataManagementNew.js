@@ -1,106 +1,114 @@
 import { useState, useEffect, useCallback } from 'react';
-import { vehicleService, homeRentService, electricityService } from '../services';
+import api from '../services/api';
 
-// Map type to service
-const serviceMap = {
-  vehicle: vehicleService,
-  homeRent: homeRentService,
-  electricity: electricityService
-};
-
-export const useDataManagementNew = (type = 'vehicle') => {
+export const useDataManagementNew = (type) => {
   const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const service = serviceMap[type];
+
+  const getEndpoint = (type) => {
+    switch(type) {
+      case 'vehicle':
+        return '/vehicles';
+      case 'homeRent':
+        return '/home-rents';
+      case 'electricity':
+        return '/electricity';
+      default:
+        throw new Error(`Unknown type: ${type}`);
+    }
+  };
 
   const fetchData = useCallback(async () => {
-    if (!service) return;
-    
     try {
       setLoading(true);
       setError(null);
-      const result = await service.getAll();
-      setData(result || []);
+      const endpoint = getEndpoint(type);
+      console.log(`Fetching from: ${endpoint}`);
+      const response = await api.get(endpoint);
+      setData(Array.isArray(response) ? response : []);
     } catch (err) {
-      console.error(`Error fetching ${type} data:`, err);
-      const errorMessage = err.message.includes('Failed to fetch') ? 
-        'Could not connect to server. Please check if the backend is running.' : 
-        err.message;
-      setError(errorMessage);
+      console.error(`Error fetching ${type}:`, err);
+      setError(err.message);
       setData([]);
-      // Retry after 5 seconds if it's a connection error
-      if (err.message.includes('Failed to fetch')) {
-        setTimeout(() => {
-          console.log('Retrying connection...');
-          fetchData();
-        }, 5000);
-      }
     } finally {
       setLoading(false);
     }
-  }, [service, type]);
+  }, [type]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
+  const validateData = useCallback((items) => {
+    if (!Array.isArray(items)) {
+      console.error('Invalid data format:', items);
+      return [];
+    }
+
+    return items.map(item => {
+      // Ensure all required fields exist
+      const validatedItem = {
+        _id: item._id || '',
+        name: item.name || '',
+        location: item.location || '',
+        contractNumber: item.contractNumber || '',
+        contractStartingDate: item.contractStartingDate || '',
+        contractEndingDate: item.contractEndingDate || '',
+        contractStatus: item.contractStatus || 'Active',
+        rentAnnually: Number(item.rentAnnually) || 0,
+        contactNo: item.contactNo || '',
+        gts: item.gts || '',
+        attachments: Array.isArray(item.attachments) ? item.attachments : []
+      };
+
+      // Ensure dates are in correct format
+      try {
+        if (validatedItem.contractStartingDate) {
+          new Date(validatedItem.contractStartingDate).toISOString();
+        }
+        if (validatedItem.contractEndingDate) {
+          new Date(validatedItem.contractEndingDate).toISOString();
+        }
+      } catch (error) {
+        console.error('Invalid date format:', error);
+      }
+
+      return validatedItem;
+    });
+  }, []);
+
   const addItem = useCallback(async (newItem) => {
     try {
-      setLoading(true);
-      const result = await service.create(newItem);
-      setData(prev => [...prev, result]);
-      return result;
+      const endpoint = `/${type}s`;
+      const response = await api.post(endpoint, newItem);
+      setData(prev => [...prev, response]);
+      return response;
     } catch (err) {
-      setError(err.message);
-      throw err;
-    } finally {
-      setLoading(false);
+      throw new Error(`Failed to add ${type}: ${err.message}`);
     }
-  }, [service]);
+  }, [type]);
 
   const updateItem = useCallback(async (id, updatedItem) => {
-    if (!id) {
-      throw new Error('No ID provided for update operation');
-    }
-    
     try {
-      setLoading(true);
-      setError(null);
-      
-      console.log('Updating item:', {
-        id,
-        updatedItem
-      });
-      
-      const result = await service.update(id, updatedItem);
-      
-      setData(prev => prev.map(item => 
-        item._id === id ? result : item
-      ));
-      
-      return result;
+      const endpoint = `/${type}s/${id}`;
+      const response = await api.put(endpoint, updatedItem);
+      setData(prev => prev.map(item => item._id === id ? response : item));
+      return response;
     } catch (err) {
-      console.error('Update error:', err);
-      setError(err.message);
-      throw err;
-    } finally {
-      setLoading(false);
+      throw new Error(`Failed to update ${type}: ${err.message}`);
     }
-  }, [service]);
+  }, [type]);
 
   const deleteItem = useCallback(async (id) => {
     try {
-      setLoading(true);
-      await service.delete(id);
-      setData(prev => prev.filter(item => item._id !== id && item.id !== id));
+      const endpoint = `/${type}s/${id}`;
+      await api.delete(endpoint);
+      setData(prev => prev.filter(item => item._id !== id));
     } catch (err) {
-      setError(err.message);
-      throw err;
-    } finally {
-      setLoading(false);
+      throw new Error(`Failed to delete ${type}: ${err.message}`);
     }
-  }, [service]);
+  }, [type]);
 
   return {
     data,

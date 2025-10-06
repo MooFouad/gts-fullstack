@@ -13,7 +13,8 @@ const ElectricityContainer = () => {
   const [deleteDialog, setDeleteDialog] = useState({ isOpen: false, id: null });
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
-  const { data: items, addItem, updateItem, deleteItem, loading, error } = useDataManagement('electricity');
+  const [importing, setImporting] = useState(false);
+  const { data: items, addItem, updateItem, deleteItem, loading, error, refreshData } = useDataManagement('electricity');
 
   const filteredItems = items.filter((item) => {
     // Search filter
@@ -52,13 +53,12 @@ const ElectricityContainer = () => {
   const handleSubmit = async (formData) => {
     try {
       if (formDialog.data) {
-        // Use _id for MongoDB documents
         console.log('Updating item with ID:', formDialog.data._id);
         console.log('Update data:', formData);
         
         await updateItem(formDialog.data._id, {
           ...formData,
-          _id: formDialog.data._id // Ensure _id is preserved
+          _id: formDialog.data._id
         });
       } else {
         await addItem(formData);
@@ -66,7 +66,6 @@ const ElectricityContainer = () => {
       setFormDialog({ isOpen: false, data: null });
     } catch (err) {
       console.error('Form submission error:', err);
-      // Keep the dialog open if there's an error
       alert(`Error: ${err.message || 'Failed to save changes. Please try again.'}`);
     }
   };
@@ -91,8 +90,21 @@ const ElectricityContainer = () => {
     }
   };
 
+  const handleImport = async (file) => {
+    try {
+      setImporting(true);
+      const result = await importElectricityFromExcel(file, addItem);
+      alert(`Successfully imported ${result.count} electricity bill records!`);
+      await refreshData();
+    } catch (error) {
+      console.error('Import error:', error);
+      alert(`Failed to import data: ${error.message}`);
+    } finally {
+      setImporting(false);
+    }
+  };
 
-  if (loading) {
+  if (loading && !importing) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -120,6 +132,7 @@ const ElectricityContainer = () => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
         <h2 className="text-xl font-semibold">Electricity Bills</h2>
         <div className="flex flex-wrap gap-2">
+          <ExportButton onClick={handleExport} label="Export Electricity Bills" />
           <ExportButton onClick={handleExport} label="Export Electricity Bills" />
           <button
             onClick={handleCreate}

@@ -1,86 +1,60 @@
 const mongoose = require('mongoose');
 
 const vehicleSchema = new mongoose.Schema({
-  plateNumber: {
-    type: String,
-    required: true,
-    trim: true
+  plateNumber: { type: String, required: true },
+  plateType: { type: String },
+  vehicleMaker: { type: String },
+  vehicleModel: { type: String },
+  modelYear: { type: Number },
+  sequenceNumber: { type: String },
+  chassisNumber: { type: String },
+  licenseExpiryDate: { 
+    type: Date,
+    set: v => v ? new Date(v) : null 
   },
-  plateType: {
-    type: String,
-    required: true
+  inspectionExpiryDate: { 
+    type: Date,
+    set: v => v ? new Date(v) : null 
   },
-  vehicleMaker: {
+  actualDriverId: { type: String },
+  actualDriverName: { type: String },
+  mvpiStatus: { 
     type: String,
-    required: true
-  },
-  vehicleModel: {
-    type: String,
-    required: true
-  },
-  modelYear: {
-    type: Number,
-    required: true
-  },
-  sequenceNumber: {
-    type: String,
-    default: ''
-  },
-  chassisNumber: {
-    type: String,
-    required: true
-  },
-  licenseExpiryDate: {
-    type: String,
-    required: true
-  },
-  inspectionExpiryDate: {
-    type: String,
-    required: true
-  },
-  actualDriverId: {
-    type: String,
-    default: ''
-  },
-  actualDriverName: {
-    type: String,
-    default: ''
-  },
-  mvpiStatus: {
-    type: String,
+    enum: ['Active', 'Expired', 'Warning'],
     default: 'Active'
   },
-  insuranceStatus: {
+  insuranceStatus: { 
     type: String,
+    enum: ['Valid', 'Invalid', 'Expired'],
     default: 'Valid'
   },
-  restrictionStatus: {
-    type: String,
-    default: 'None'
+  restrictionStatus: { type: String },
+  istemarahIssueDate: { 
+    type: Date,
+    set: v => v ? new Date(v) : null 
   },
-  istemarahIssueDate: {
+  vehicleStatus: { 
     type: String,
-    default: ''
-  },
-  vehicleStatus: {
-    type: String,
+    enum: ['Active', 'Inactive', 'Maintenance'],
     default: 'Active'
   },
-  bodyType: {
-    type: String,
-    default: ''
-  },
-  attachments: {
-    type: Array,
-    default: []
-  }
-}, {
-  timestamps: true
+  bodyType: { type: String },
+  attachments: [{ type: Object }],
+  createdAt: { type: Date, default: Date.now }
 });
 
-// Index for faster searches
-vehicleSchema.index({ plateNumber: 1 });
-vehicleSchema.index({ vehicleStatus: 1 });
-vehicleSchema.index({ licenseExpiryDate: 1 });
+// Add pre-save middleware to ensure dates are valid
+vehicleSchema.pre('save', function(next) {
+  if (this.licenseExpiryDate && isNaN(this.licenseExpiryDate.getTime())) {
+    this.licenseExpiryDate = null;
+  }
+  if (this.inspectionExpiryDate && isNaN(this.inspectionExpiryDate.getTime())) {
+    this.inspectionExpiryDate = null;
+  }
+  if (this.istemarahIssueDate && isNaN(this.istemarahIssueDate.getTime())) {
+    this.istemarahIssueDate = null;
+  }
+  next();
+});
 
 module.exports = mongoose.model('Vehicle', vehicleSchema);
