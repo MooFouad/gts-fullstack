@@ -1,199 +1,75 @@
 import { useState, useEffect, useCallback } from 'react';
-import { vehicleService, homeRentService, electricityService } from '../services';
-import { isExpired } from '../utils/dateUtils';
+import api from '../services/api';
 
-// Map type to service
-const serviceMap = {
-  vehicle: vehicleService,
-  homeRent: homeRentService,
-  electricity: electricityService
-};
-
-export const useDataManagement = (type = 'vehicle', useAPI = true) => {
+export const useDataManagement = (type) => {
   const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const service = serviceMap[type];
-
-  const updateItemStatus = useCallback((item) => {
-    if (type === 'vehicle') {
-      const isLicenseExpired = isExpired(item.licenseExpiryDate);
-      const isInspectionExpired = isExpired(item.inspectionExpiryDate);
-      if (isLicenseExpired || isInspectionExpired) {
-        return { ...item, vehicleStatus: 'Inactive' };
-      }
-    } else if (type === 'homeRent') {
-      const isContractExpired = isExpired(item.contractEndingDate);
-      if (isContractExpired) {
-        return { ...item, contractStatus: 'Inactive' };
-      }
+  const getEndpoint = (type) => {
+    switch(type) {
+      case 'homeRent':
+        return '/home-rents';
+      case 'vehicle':
+        return '/vehicles';
+      case 'electricity':
+        return '/electricity';
+      default:
+        throw new Error(`Unknown type: ${type}`);
     }
-    return item;
-  }, [type]);
+  };
 
-  // Load initial data
-  useEffect(() => {
-    let mounted = true;
-
-    const loadData = async () => {
-      if (!useAPI || !service) {
-        setData([]);
-        return;
-      }
-
+  const fetchData = useCallback(async () => {
+    try {
       setLoading(true);
       setError(null);
-      try {
-        console.log(`🔄 Loading ${type} data from API...`);
-        const result = await service.getAll();
-        if (mounted) {
-          setData(result || []);
-          console.log(`✅ Successfully loaded ${result?.length || 0} ${type} items`);
-        }
-      } catch (err) {
-        if (mounted) {
-          console.error(`❌ Error loading ${type} data:`, err);
-          setError(err.message);
-          setData([]);
-        }
-      } finally {
-        if (mounted) {
-          setLoading(false);
-        }
-      }
-    };
-
-    loadData();
-
-    return () => {
-      mounted = false;
-    };
-  }, [type, useAPI, service]);
-
-  // Update status checker
-  useEffect(() => {
-    const checkAndUpdateStatus = () => {
-      const updatedData = data.map(updateItemStatus);
-      if (JSON.stringify(updatedData) !== JSON.stringify(data)) {
-        setData(updatedData);
-      }
-    };
-    
-    checkAndUpdateStatus();
-    const interval = setInterval(checkAndUpdateStatus, 3600000); // Every hour
-    
-    return () => clearInterval(interval);
-  }, [data, updateItemStatus]);
-
-  const dispatchCountUpdate = useCallback((newData) => {
-    const event = new CustomEvent('itemCountUpdate', {
-      detail: { type, count: newData.length }
-    });
-    window.dispatchEvent(event);
+      const endpoint = getEndpoint(type);
+      const response = await api.get(endpoint);
+      setData(Array.isArray(response) ? response : []);
+    } catch (err) {
+      console.error(`Error fetching ${type}:`, err);
+      setError(err.message);
+      setData([]);
+    } finally {
+      setLoading(false);
+    }
   }, [type]);
 
-  // ADD ITEM
-  const addItem = async (newItem) => {
-    if (!useAPI || !service) {
-      throw new Error('API is not enabled');
-    }
-
-    setLoading(true);
+  const addItem = useCallback(async (newItem) => {
     try {
-      const createdItem = await service.create(newItem);
-      const itemWithStatus = updateItemStatus(createdItem);
-      setData(prevData => {
-        const newData = [...prevData, itemWithStatus];
-        dispatchCountUpdate(newData);
-        return newData;
-      });
-      setError(null);
-      return createdItem;
+      const endpoint = getEndpoint(type);
+      const response = await api.post(endpoint, newItem);
+      setData(prev => [...prev, response]);
+      return response;
     } catch (err) {
-      console.error('Error adding item:', err);
-      setError(err.message);
-      throw err;
-    } finally {
-      setLoading(false);
+      throw new Error(`Failed to add ${type}: ${err.message}`);
     }
-  };
+  }, [type]);
 
-  // UPDATE ITEM
-  const updateItem = async (id, updatedItem) => {
-    if (!useAPI || !service) {
-      throw new Error('API is not enabled');
-    }
-
-    setLoading(true);
-    setError(null);
+  const updateItem = useCallback(async (id, updatedItem) => {
     try {
-      // Get the correct MongoDB _id
-      let mongoId;
-      if (typeof id === 'string' && id.length === 24) {
-        // If it looks like a MongoDB _id, use it directly
-        mongoId = id;
-      } else {
-        // Otherwise try to find the corresponding item and get its _id
-        const existingItem = data.find(item => 
-          item._id === id || item.id === id || item._id === id._id
-        );
-        mongoId = existingItem?._id || id;
-      }
-      
-      console.log('Updating item with ID:', mongoId);
-      const updated = await service.update(mongoId, {
-        ...updatedItem,
-        _id: mongoId // Ensure _id is included in the update
-      });
-      
-      console.log('Update response:', updated);
-      const itemWithStatus = updateItemStatus(updated);
-      
-      setData(prevData => {
-        const newData = prevData.map(item => 
-          (item._id === mongoId || item.id === id) ? itemWithStatus : item
-        );
-        dispatchCountUpdate(newData);
-        return newData;
-      });
-      
-      return updated;
+      const endpoint = getEndpoint(type);
+      const response = await api.put(`${endpoint}/${id}`, updatedItem);
+      setData(prev => prev.map(item => item._id === id ? response : item));
+      return response;
     } catch (err) {
-      console.error('Error updating item:', err);
-      const errorMessage = err.message || 'Failed to update item';
-      setError(errorMessage);
-      throw new Error(errorMessage);
-    } finally {
-      setLoading(false);
+      throw new Error(`Failed to update ${type}: ${err.message}`);
     }
-  };
+  }, [type]);
 
-  // DELETE ITEM
-  const deleteItem = async (id) => {
-    if (!useAPI || !service) {
-      throw new Error('API is not enabled');
-    }
-
-    setLoading(true);
+  const deleteItem = useCallback(async (id) => {
     try {
-      // MongoDB uses _id, localStorage uses id
-      const mongoId = typeof id === 'object' ? id._id : (data.find(item => item.id === id)?._id || id);
-      await service.delete(mongoId);
-      setData(prevData => {
-        const newData = prevData.filter(item => item._id !== mongoId && item.id !== id);
-        dispatchCountUpdate(newData);
-        return newData;
-      });
-      setError(null);
+      const endpoint = getEndpoint(type);
+      await api.delete(`${endpoint}/${id}`);
+      setData(prev => prev.filter(item => item._id !== id));
     } catch (err) {
-      console.error('Error deleting item:', err);
-      setError(err.message);
-      throw err;
-    } finally {
-      setLoading(false);
+      throw new Error(`Failed to delete ${type}: ${err.message}`);
     }
-  };
+  }, [type]);
 
-  return { data, addItem, updateItem, deleteItem, loading, error };
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  return { data, loading, error, addItem, updateItem, deleteItem, refreshData: fetchData };
 };

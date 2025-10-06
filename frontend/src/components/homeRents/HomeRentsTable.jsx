@@ -19,14 +19,22 @@ const HomeRentsTable = ({ data = [], onEdit, onDelete }) => {
 
   const calculateRemainingDays = (endDateStr) => {
     if (!endDateStr) return null;
+    
     try {
-      const endDate = new Date(endDateStr);
+      const [year, month, day] = endDateStr.split('-').map(Number);
+      const endDate = new Date(year, month - 1, day); // month is 0-based
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      if (isNaN(endDate.getTime())) return null;
+
+      if (isNaN(endDate.getTime())) {
+        console.error('Invalid end date:', endDateStr);
+        return null;
+      }
+
       const diffTime = endDate.getTime() - today.getTime();
       return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    } catch {
+    } catch (error) {
+      console.error('Error calculating remaining days:', error);
       return null;
     }
   };
@@ -48,94 +56,87 @@ const HomeRentsTable = ({ data = [], onEdit, onDelete }) => {
     return 'bg-white border-l-4 border-transparent';
   };
 
+  const getRemainingDaysDisplay = (item) => {
+    const days = item.remainingDays;
+    
+    if (days === null || typeof days === 'undefined') return 'Invalid date';
+    
+    const textColor = days < 0 ? 'text-red-600' : 
+                     days <= 30 ? 'text-orange-600' : 
+                     'text-green-600';
+                     
+    const text = days < 0 ? `Expired ${Math.abs(days)} days ago` :
+                 `${days} days remaining`;
+                 
+    return <span className={`font-medium ${textColor}`}>{text}</span>;
+  };
+
+  const getRemainingDays = (endDate) => {
+    if (!endDate) return null;
+    const end = new Date(endDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const diffTime = end.getTime() - today.getTime();
+    const days = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return days;
+  };
+
+  const formatRemainingDays = (days) => {
+    if (days === null || isNaN(days)) return 'Invalid date';
+    if (days < 0) return <span className="text-red-600 font-medium">Expired</span>;
+    if (days === 0) return <span className="text-orange-600 font-medium">Expires today</span>;
+    if (days <= 30) return <span className="text-orange-600 font-medium">{days} days left</span>;
+    return <span className="text-green-600">{days} days left</span>;
+  };
+
   return (
     <div className="relative">
       <div className="overflow-x-auto shadow-md rounded-lg">
-        <table className="min-w-full divide-y divide-gray-200">
+        <table className="min-w-full divide-y divide-gray-200 table-fixed">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">
-                Contract Number
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">
-                Starting Date
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">
-                End Date
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">
-                Notice
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">
-                Remaining Days
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">
-                Payment Terms
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">
-                Payment Type
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">
-                Payment Status
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">
-                Amount
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">
-                Actual Rent
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">
-                Address
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">
-                Contact Person
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">
-                GTS Contact
-              </th>
-              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase whitespace-nowrap">
-                Actions
-              </th>
+              <th className="w-36 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contract Number</th>
+              <th className="w-28 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Starting Date</th>
+              <th className="w-28 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">End Date</th>
+              <th className="w-24 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Notice</th>
+              <th className="w-32 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Remaining Days</th>
+              <th className="w-32 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Payment Terms</th>
+              <th className="w-28 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Payment Type</th>
+              <th className="w-28 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Payment Status</th>
+              <th className="w-28 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
+              <th className="w-28 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actual Rent</th>
+              <th className="w-96 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Address</th>
+              <th className="w-40 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contact Person</th>
+              <th className="w-40 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">GTS Contact</th>
+              <th className="w-24 px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Actions</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {data.map((item) => {
-              const remainingDays = calculateRemainingDays(item.contractEndingDate);
+              const remainingDays = getRemainingDays(item.contractEndingDate);
               
               return (
-                <tr key={item._id} className={`${getRowClass(item)} hover:bg-gray-50`}>
-                  <td className="px-4 py-2 text-sm text-gray-900">
+                <tr key={item._id} className={`hover:bg-gray-50`}>
+                  <td className="px-4 py-2 text-sm text-gray-900 truncate">
                     {item.contractNumber || 'N/A'}
                   </td>
-                  <td className="px-4 py-2 text-sm text-gray-900">
+                  <td className="px-4 py-2 text-sm text-gray-900 whitespace-nowrap">
                     {formatDate(item.contractStartingDate)}
                   </td>
-                  <td className="px-4 py-2 text-sm text-gray-900">
+                  <td className="px-4 py-2 text-sm text-gray-900 whitespace-nowrap">
                     {formatDate(item.contractEndingDate)}
                   </td>
                   <td className="px-4 py-2 text-sm text-gray-900">
                     {item.notice || 'N/A'}
                   </td>
-                  <td className="px-4 py-2 text-sm text-gray-900">
-                    {remainingDays !== null ? (
-                      <span className={
-                        remainingDays < 0 
-                          ? 'text-red-600 font-semibold' 
-                          : remainingDays <= 10 
-                          ? 'text-orange-600 font-semibold' 
-                          : 'text-green-600'
-                      }>
-                        {remainingDays < 0 
-                          ? `Expired ${Math.abs(remainingDays)} days ago` 
-                          : `${remainingDays} days`}
-                      </span>
-                    ) : 'N/A'}
+                  <td className="px-4 py-2 text-sm">
+                    {formatRemainingDays(remainingDays)}
+                  </td>
+                  <td className="px-4 py-2 text-sm text-gray-900 truncate">
+                    {item.paymentTerms || 'N/A'}
                   </td>
                   <td className="px-4 py-2 text-sm text-gray-900">
-                    {item.paymentTerms || '3 Installments'}
-                  </td>
-                  <td className="px-4 py-2 text-sm text-gray-900">
-                    {item.paymentType || 'cash'}
+                    {item.paymentType || 'N/A'}
                   </td>
                   <td className="px-4 py-2 text-sm text-gray-900">
                     <span className={`px-2 py-1 rounded text-xs ${
@@ -155,12 +156,14 @@ const HomeRentsTable = ({ data = [], onEdit, onDelete }) => {
                     {formatCurrency(item.rentAnnually)}
                   </td>
                   <td className="px-4 py-2 text-sm text-gray-900">
-                    {item.address || 'N/A'}
+                    <div className="min-w-[384px] max-w-lg whitespace-normal break-words">
+                      {item.address || 'N/A'}
+                    </div>
                   </td>
-                  <td className="px-4 py-2 text-sm text-gray-900">
+                  <td className="px-4 py-2 text-sm text-gray-900 truncate">
                     {item.contactPerson || 'N/A'}
                   </td>
-                  <td className="px-4 py-2 text-sm text-gray-900">
+                  <td className="px-4 py-2 text-sm text-gray-900 truncate">
                     {item.gtsContact || 'N/A'}
                   </td>
                   <td className="px-4 py-2 text-sm text-center">

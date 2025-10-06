@@ -33,20 +33,29 @@ const homeRentRoutes = require('./routes/homeRentRoutes');
 const electricityRoutes = require('./routes/electricityRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const testDataRoutes = require('./routes/testDataRoutes');
+const importRoutes = require('./routes/importRoutes');
 
 // Use routes with correct paths
 app.use('/api/vehicles', vehicleRoutes);
-app.use('/api/home-rents', homeRentRoutes);
+app.use('/api/home-rents', homeRentRoutes); // Fixed: ensure hyphenated route
 app.use('/api/electricity', electricityRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/test', testDataRoutes);
+app.use('/api/import', importRoutes);
 
 // Health Check
 app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'ok', 
     mongodb: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
-    timestamp: new Date()
+    timestamp: new Date(),
+    routes: {
+      vehicles: '/api/vehicles',
+      homeRents: '/api/home-rents',
+      electricity: '/api/electricity',
+      dashboard: '/api/dashboard',
+      import: '/api/import'
+    }
   });
 });
 
@@ -61,8 +70,17 @@ app.use((err, req, res, next) => {
 
 // Handle 404s
 app.use((req, res) => {
-  console.log('404 Not Found:', req.path);
-  res.status(404).json({ error: `Route ${req.path} not found` });
+  console.log('404 Not Found:', req.method, req.path);
+  res.status(404).json({ 
+    error: `Route ${req.method} ${req.path} not found`,
+    availableRoutes: [
+      '/api/vehicles',
+      '/api/home-rents',
+      '/api/electricity',
+      '/api/dashboard',
+      '/api/import'
+    ]
+  });
 });
 
 // Start server
@@ -73,7 +91,10 @@ const startServer = async () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📊 API: http://localhost:${PORT}/api`);
       console.log(`💚 Health: http://localhost:${PORT}/api/health`);
-      console.log(`📥 Import: http://localhost:${PORT}/api/import`); // Shows import endpoint
+      console.log(`🚗 Vehicles: http://localhost:${PORT}/api/vehicles`);
+      console.log(`🏠 Home Rents: http://localhost:${PORT}/api/home-rents`);
+      console.log(`⚡ Electricity: http://localhost:${PORT}/api/electricity`);
+      console.log(`📥 Import: http://localhost:${PORT}/api/import`);
     });
 
     server.on('error', (err) => {

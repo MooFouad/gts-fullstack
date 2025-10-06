@@ -5,31 +5,11 @@ const HomeRent = require('../models/HomeRent');
 // GET all home rents
 router.get('/', async (req, res) => {
   try {
-    console.log('Fetching home rents...');
     const homeRents = await HomeRent.find({}).lean();
-
-    const formattedRents = homeRents.map(rent => {
-      // Log raw data for debugging
-      console.log('Raw rent data:', {
-        id: rent._id,
-        startDate: rent.contractStartingDate,
-        endDate: rent.contractEndingDate,
-        rent: rent.rentAnnually
-      });
-
-      return {
-        ...rent,
-        contractStartingDate: rent.contractStartingDate || '',
-        contractEndingDate: rent.contractEndingDate || '',
-        rentAnnually: Number(rent.rentAnnually || 0),
-        amount: Number(rent.amount || 0)
-      };
-    });
-
-    console.log(`Found ${formattedRents.length} home rents`);
-    res.json(formattedRents);
+    console.log('Found home rents:', homeRents.length);
+    res.json(homeRents);
   } catch (error) {
-    console.error('Error fetching home rents:', error);
+    console.error('GET / Error:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -50,12 +30,12 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     console.log('Creating new home rent:', req.body);
-    const rent = new HomeRent(req.body);
-    await rent.save();
-    console.log('Home rent created successfully:', rent);
-    res.status(201).json(rent);
+    const homeRent = new HomeRent(req.body);
+    const saved = await homeRent.save();
+    console.log('Created successfully:', saved._id);
+    res.status(201).json(saved);
   } catch (error) {
-    console.error('Error creating home rent:', error);
+    console.error('POST / Error:', error);
     res.status(400).json({ error: error.message });
   }
 });
@@ -101,11 +81,15 @@ router.put('/:id', async (req, res) => {
 // DELETE home rent
 router.delete('/:id', async (req, res) => {
   try {
-    const rent = await HomeRent.findByIdAndDelete(req.params.id);
-    if (!rent) return res.status(404).json({ error: 'Home rent not found' });
-    res.json({ message: 'Home rent deleted successfully', id: req.params.id });
+    console.log('Delete request for ID:', req.params.id);
+    const result = await HomeRent.findByIdAndDelete(req.params.id);
+    if (!result) {
+      return res.status(404).json({ error: 'Home rent not found' });
+    }
+    console.log('Successfully deleted:', req.params.id);
+    res.json({ success: true, id: req.params.id });
   } catch (error) {
-    console.error('Error deleting home rent:', error);
+    console.error('Delete Error:', error);
     res.status(500).json({ error: error.message });
   }
 });

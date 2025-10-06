@@ -5,7 +5,7 @@ import FormDialog from '../common/FormDialog';
 import ConfirmDialog from '../common/ConfirmDialog';
 import Toolbar from '../layout/Toolbar';
 import ExportButton from '../common/ExportButton';
-import { useDataManagementNew as useDataManagement } from '../../hooks/useDataManagementNew';
+import { useDataManagement } from '../../hooks/useDataManagement';
 import { exportHomeRentsToExcel } from '../../utils/excelUtils';
 
 const HomeRentsContainer = () => {
@@ -77,13 +77,19 @@ const HomeRentsContainer = () => {
   };
 
   const handleDelete = (id) => {
+    console.log('Initiating delete for:', id);
     setDeleteDialog({ isOpen: true, id });
   };
 
-  const confirmDelete = () => {
-    if (deleteDialog.id !== null) {
-      deleteItem(deleteDialog.id);
-      setDeleteDialog({ isOpen: false, id: null });
+  const confirmDelete = async () => {
+    if (deleteDialog.id) {
+      try {
+        await deleteItem(deleteDialog.id);
+        setDeleteDialog({ isOpen: false, id: null });
+      } catch (error) {
+        console.error('Delete failed:', error);
+        alert('Failed to delete item. Please try again.');
+      }
     }
   };
 

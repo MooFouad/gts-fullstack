@@ -8,14 +8,14 @@ export const useDataManagementNew = (type) => {
 
   const getEndpoint = (type) => {
     switch(type) {
+      case 'homeRent':
+        return '/home-rents'; // Match backend route
       case 'vehicle':
         return '/vehicles';
-      case 'homeRent':
-        return '/home-rents';
       case 'electricity':
         return '/electricity';
       default:
-        throw new Error(`Unknown type: ${type}`);
+        return `/${type}s`;
     }
   };
 
@@ -78,10 +78,10 @@ export const useDataManagementNew = (type) => {
     });
   }, []);
 
-  const addItem = useCallback(async (newItem) => {
+  const addItem = useCallback(async (data) => {
     try {
-      const endpoint = `/${type}s`;
-      const response = await api.post(endpoint, newItem);
+      const endpoint = getEndpoint(type);
+      const response = await api.post(endpoint, data);
       setData(prev => [...prev, response]);
       return response;
     } catch (err) {
@@ -102,10 +102,11 @@ export const useDataManagementNew = (type) => {
 
   const deleteItem = useCallback(async (id) => {
     try {
-      const endpoint = `/${type}s/${id}`;
-      await api.delete(endpoint);
+      const endpoint = getEndpoint(type);
+      await api.delete(`${endpoint}/${id}`);
       setData(prev => prev.filter(item => item._id !== id));
     } catch (err) {
+      console.error('Delete error:', err);
       throw new Error(`Failed to delete ${type}: ${err.message}`);
     }
   }, [type]);

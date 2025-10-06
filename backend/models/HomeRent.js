@@ -1,102 +1,75 @@
 const mongoose = require('mongoose');
 
 const homeRentSchema = new mongoose.Schema({
-  contractNumber: {
-    type: String,
-    required: true,
-    trim: true
+  contractNumber: { 
+    type: String, 
+    required: true 
   },
   contractStartingDate: { 
-    type: String,
-    required: true
+    type: Date,
+    required: true,
+    set: v => v ? new Date(v) : null
   },
   contractEndingDate: { 
-    type: String,
-    required: true
+    type: Date,
+    required: true,
+    set: v => v ? new Date(v) : null
   },
-  notice: {
-    type: String,
-    default: '',
-    trim: true
+  notice: String,
+  paymentTerms: String,
+  paymentType: { 
+    type: String, 
+    default: 'cash' 
   },
-  noticeDays: {
-    type: Number,
-    default: null
+  paymentStatus: { 
+    type: String, 
+    default: 'Pending' 
   },
-  paymentTerms: {
-    type: String,
-    default: '3 Installments',
-    trim: true
-  },
-  paymentType: {
-    type: String,
-    default: 'cash',
-    trim: true
-  },
-  paymentStatus: {
-    type: String,
-    enum: ['Paid', 'Pending', 'Overdue'],
-    default: 'Pending'
-  },
-  amount: {
-    type: Number,
-    default: 0
+  amount: { 
+    type: Number, 
+    default: 0 
   },
   rentAnnually: { 
-    type: Number,
-    default: 0
+    type: Number, 
+    default: 0 
   },
-  address: {
-    type: String,
-    default: '',
-    trim: true
-  },
-  contactPerson: {
-    type: String,
-    default: '',
-    trim: true
-  },
-  gtsContact: {
-    type: String,
-    default: '',
-    trim: true
-  },
-  comments: {
-    type: String,
-    default: '',
-    trim: true
-  },
-  attachments: {
-    type: Array,
-    default: []
-  }
+  address: String,
+  contactPerson: String,
+  gtsContact: String,
+  comments: String,
+  attachments: [{ type: Object }]
 }, {
-  timestamps: true
+  timestamps: true,
+  toJSON: { 
+    virtuals: true,
+    transform: function(doc, ret) {
+      // Format dates for consistency
+      if (ret.contractStartingDate) {
+        ret.contractStartingDate = ret.contractStartingDate.toISOString().split('T')[0];
+      }
+      if (ret.contractEndingDate) {
+        ret.contractEndingDate = ret.contractEndingDate.toISOString().split('T')[0];
+        // Calculate remaining days
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const endDate = new Date(ret.contractEndingDate);
+        const diffTime = endDate.getTime() - today.getTime();
+        ret.remainingDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      }
+      return ret;
+    }
+  },
+  toObject: { virtuals: true }
 });
 
-// Virtual field for remaining days until contract ends
+// Add virtual for remaining days calculation
 homeRentSchema.virtual('remainingDays').get(function() {
   if (!this.contractEndingDate) return null;
-  
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
   const endDate = new Date(this.contractEndingDate);
-  endDate.setHours(0, 0, 0, 0);
-  
-  const daysUntilEnd = Math.floor((endDate - today) / (1000 * 60 * 60 * 24));
-  
-  if (daysUntilEnd < 0) return -1;
-  return daysUntilEnd;
+  const diffTime = endDate.getTime() - today.getTime();
+  return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 });
-
-// Ensure virtual fields are included when converting to JSON
-homeRentSchema.set('toJSON', { virtuals: true });
-homeRentSchema.set('toObject', { virtuals: true });
-
-// Indexes for better query performance
-homeRentSchema.index({ contractNumber: 1 });
-homeRentSchema.index({ contractEndingDate: 1 });
-homeRentSchema.index({ contractStartingDate: 1 });
 
 module.exports = mongoose.model('HomeRent', homeRentSchema);
