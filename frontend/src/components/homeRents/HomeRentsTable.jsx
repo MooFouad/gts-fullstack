@@ -40,6 +40,14 @@ const HomeRentsTable = ({ data = [], onEdit, onDelete }) => {
     }).format(amount);
   };
 
+  const getRowClass = (item) => {
+    const remainingDays = calculateRemainingDays(item.contractEndingDate);
+    if (remainingDays === null) return 'bg-white';
+    if (remainingDays < 0) return 'bg-red-100 border-l-4 border-red-500';
+    if (remainingDays <= 10) return 'bg-yellow-100 border-l-4 border-orange-500';
+    return 'bg-white border-l-4 border-transparent';
+  };
+
   return (
     <div className="relative">
       <div className="overflow-x-auto shadow-md rounded-lg">
@@ -48,6 +56,18 @@ const HomeRentsTable = ({ data = [], onEdit, onDelete }) => {
             <tr>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">
                 Contract Number
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">
+                Starting Date
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">
+                End Date
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">
+                Notice
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">
+                Remaining Days
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">
                 Payment Terms
@@ -73,60 +93,86 @@ const HomeRentsTable = ({ data = [], onEdit, onDelete }) => {
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">
                 GTS Contact
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">
-                Comments
-              </th>
               <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase whitespace-nowrap">
                 Actions
               </th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {data.map((item) => (
-              <tr key={item._id} className="hover:bg-gray-50">
-                <td className="px-4 py-2 text-sm text-gray-900">
-                  {item.contractNumber || 'N/A'}
-                </td>
-                <td className="px-4 py-2 text-sm text-gray-900">
-                  {item.paymentTerms || '3 Installments'}
-                </td>
-                <td className="px-4 py-2 text-sm text-gray-900">
-                  {item.paymentType || 'cash'}
-                </td>
-                <td className="px-4 py-2 text-sm text-gray-900">
-                  {item.paymentStatus || 'Pending'}
-                </td>
-                <td className="px-4 py-2 text-sm text-gray-900">
-                  {item.amount
-                    ? `SAR ${Number(item.amount).toLocaleString()}`
-                    : 'SAR 0.00'}
-                </td>
-                <td className="px-4 py-2 text-sm text-gray-900">
-                  {item.rentAnnually
-                    ? `SAR ${Number(item.rentAnnually).toLocaleString()}`
-                    : 'SAR 0.00'}
-                </td>
-                <td className="px-4 py-2 text-sm text-gray-900">
-                  {item.address || 'N/A'}
-                </td>
-                <td className="px-4 py-2 text-sm text-gray-900">
-                  {item.contactPerson || 'N/A'}
-                </td>
-                <td className="px-4 py-2 text-sm text-gray-900">
-                  {item.gtsContact || 'N/A'}
-                </td>
-                <td className="px-4 py-2 text-sm text-gray-900">
-                  {item.comments || 'N/A'}
-                </td>
-                <td className="px-4 py-2 text-sm text-center">
-                  <ActionButtons
-                    onEdit={() => onEdit(item)}
-                    onDelete={() => onDelete(item._id)}
-                    attachments={item.attachments}
-                  />
-                </td>
-              </tr>
-            ))}
+            {data.map((item) => {
+              const remainingDays = calculateRemainingDays(item.contractEndingDate);
+              
+              return (
+                <tr key={item._id} className={`${getRowClass(item)} hover:bg-gray-50`}>
+                  <td className="px-4 py-2 text-sm text-gray-900">
+                    {item.contractNumber || 'N/A'}
+                  </td>
+                  <td className="px-4 py-2 text-sm text-gray-900">
+                    {formatDate(item.contractStartingDate)}
+                  </td>
+                  <td className="px-4 py-2 text-sm text-gray-900">
+                    {formatDate(item.contractEndingDate)}
+                  </td>
+                  <td className="px-4 py-2 text-sm text-gray-900">
+                    {item.notice || 'N/A'}
+                  </td>
+                  <td className="px-4 py-2 text-sm text-gray-900">
+                    {remainingDays !== null ? (
+                      <span className={
+                        remainingDays < 0 
+                          ? 'text-red-600 font-semibold' 
+                          : remainingDays <= 10 
+                          ? 'text-orange-600 font-semibold' 
+                          : 'text-green-600'
+                      }>
+                        {remainingDays < 0 
+                          ? `Expired ${Math.abs(remainingDays)} days ago` 
+                          : `${remainingDays} days`}
+                      </span>
+                    ) : 'N/A'}
+                  </td>
+                  <td className="px-4 py-2 text-sm text-gray-900">
+                    {item.paymentTerms || '3 Installments'}
+                  </td>
+                  <td className="px-4 py-2 text-sm text-gray-900">
+                    {item.paymentType || 'cash'}
+                  </td>
+                  <td className="px-4 py-2 text-sm text-gray-900">
+                    <span className={`px-2 py-1 rounded text-xs ${
+                      item.paymentStatus === 'Paid' 
+                        ? 'bg-green-100 text-green-800' 
+                        : item.paymentStatus === 'Pending'
+                        ? 'bg-yellow-100 text-yellow-800'
+                        : 'bg-red-100 text-red-800'
+                    }`}>
+                      {item.paymentStatus || 'Pending'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2 text-sm text-gray-900">
+                    {formatCurrency(item.amount)}
+                  </td>
+                  <td className="px-4 py-2 text-sm text-gray-900">
+                    {formatCurrency(item.rentAnnually)}
+                  </td>
+                  <td className="px-4 py-2 text-sm text-gray-900">
+                    {item.address || 'N/A'}
+                  </td>
+                  <td className="px-4 py-2 text-sm text-gray-900">
+                    {item.contactPerson || 'N/A'}
+                  </td>
+                  <td className="px-4 py-2 text-sm text-gray-900">
+                    {item.gtsContact || 'N/A'}
+                  </td>
+                  <td className="px-4 py-2 text-sm text-center">
+                    <ActionButtons
+                      onEdit={() => onEdit(item)}
+                      onDelete={() => onDelete(item._id)}
+                      attachments={item.attachments}
+                    />
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

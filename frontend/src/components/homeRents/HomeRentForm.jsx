@@ -6,15 +6,14 @@ import AttachmentField from '../common/AttachmentField';
 const HomeRentForm = ({ onSubmit, onCancel, initialData = null }) => {
   const [formData, setFormData] = useState({
     contractNumber: '',
-    startingDate: '',
-    endDate: '',
+    contractStartingDate: '',
+    contractEndingDate: '',
     notice: '',
-    noticeDate: '',
-    paymentTerms: '',
-    paymentType: '',
-    paymentsStatus: 'pending',
-    amount: '',
-    actualRent: '',
+    paymentTerms: '3 Installments',
+    paymentType: 'cash',
+    paymentStatus: 'Pending',
+    amount: 0,
+    rentAnnually: 0,
     address: '',
     contactPerson: '',
     gtsContact: '',
@@ -24,32 +23,67 @@ const HomeRentForm = ({ onSubmit, onCancel, initialData = null }) => {
 
   const formatDateForInput = (dateString) => {
     if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toISOString().split('T')[0];
+    try {
+      // If already in YYYY-MM-DD format, return as is
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+        return dateString;
+      }
+      
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return '';
+      
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return '';
+    }
   };
 
   useEffect(() => {
     if (initialData) {
+      console.log('Initial data received:', initialData);
       setFormData({
-        ...initialData,
-        startingDate: formatDateForInput(initialData.startingDate),
-        endDate: formatDateForInput(initialData.endDate),
-        noticeDate: formatDateForInput(initialData.noticeDate)
+        contractNumber: initialData.contractNumber || '',
+        contractStartingDate: formatDateForInput(initialData.contractStartingDate),
+        contractEndingDate: formatDateForInput(initialData.contractEndingDate),
+        notice: initialData.notice || '',
+        paymentTerms: initialData.paymentTerms || '3 Installments',
+        paymentType: initialData.paymentType || 'cash',
+        paymentStatus: initialData.paymentStatus || 'Pending',
+        amount: initialData.amount || 0,
+        rentAnnually: initialData.rentAnnually || 0,
+        address: initialData.address || '',
+        contactPerson: initialData.contactPerson || '',
+        gtsContact: initialData.gtsContact || '',
+        comments: initialData.comments || '',
+        attachments: initialData.attachments || []
       });
     }
   }, [initialData]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit(formData);
+    
+    // Ensure proper data types
+    const submissionData = {
+      ...formData,
+      amount: Number(formData.amount),
+      rentAnnually: Number(formData.rentAnnually),
+      // Ensure dates are in YYYY-MM-DD format
+      contractStartingDate: formData.contractStartingDate,
+      contractEndingDate: formData.contractEndingDate
+    };
+    
+    console.log('Submitting form data:', submissionData);
+    onSubmit(submissionData);
   };
 
   const handleChange = (field, value) => {
-    setFormData({ ...formData, [field]: value });
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
-
-  const paymentStatusOptions = ['pending', 'paid', 'overdue', 'cancelled'];
-  const paymentTypeOptions = ['cash', 'bank transfer', 'check'];
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 p-6">
@@ -61,26 +95,27 @@ const HomeRentForm = ({ onSubmit, onCancel, initialData = null }) => {
             className="w-full border rounded px-3 py-2"
             value={formData.contractNumber}
             onChange={(e) => handleChange('contractNumber', e.target.value)}
+            placeholder="e.g., 10241969076"
           />
         </FormField>
 
-        <FormField label="Starting Date" required>
+        <FormField label="Starting Date" required highlight>
           <input
             type="date"
             required
             className="w-full border rounded px-3 py-2"
-            value={formData.startingDate}
-            onChange={(e) => handleChange('startingDate', e.target.value)}
+            value={formData.contractStartingDate}
+            onChange={(e) => handleChange('contractStartingDate', e.target.value)}
           />
         </FormField>
 
-        <FormField label="End Date" required>
+        <FormField label="End Date" required highlight>
           <input
             type="date"
             required
             className="w-full border rounded px-3 py-2"
-            value={formData.endDate}
-            onChange={(e) => handleChange('endDate', e.target.value)}
+            value={formData.contractEndingDate}
+            onChange={(e) => handleChange('contractEndingDate', e.target.value)}
           />
         </FormField>
 
@@ -88,17 +123,9 @@ const HomeRentForm = ({ onSubmit, onCancel, initialData = null }) => {
           <input
             type="text"
             className="w-full border rounded px-3 py-2"
+            placeholder="e.g., 60 days"
             value={formData.notice}
             onChange={(e) => handleChange('notice', e.target.value)}
-          />
-        </FormField>
-
-        <FormField label="Notice Date">
-          <input
-            type="date"
-            className="w-full border rounded px-3 py-2"
-            value={formData.noticeDate}
-            onChange={(e) => handleChange('noticeDate', e.target.value)}
           />
         </FormField>
 
@@ -107,6 +134,7 @@ const HomeRentForm = ({ onSubmit, onCancel, initialData = null }) => {
             type="text"
             required
             className="w-full border rounded px-3 py-2"
+            placeholder="e.g., 3 Installments"
             value={formData.paymentTerms}
             onChange={(e) => handleChange('paymentTerms', e.target.value)}
           />
@@ -119,53 +147,59 @@ const HomeRentForm = ({ onSubmit, onCancel, initialData = null }) => {
             value={formData.paymentType}
             onChange={(e) => handleChange('paymentType', e.target.value)}
           >
-            <option value="">Select Payment Type</option>
-            {paymentTypeOptions.map(type => (
-              <option key={type} value={type}>{type.charAt(0).toUpperCase() + type.slice(1)}</option>
-            ))}
+            <option value="cash">Cash</option>
+            <option value="bank transfer">Bank Transfer</option>
+            <option value="check">Check</option>
           </select>
         </FormField>
 
-        <FormField label="Payments Status" required>
+        <FormField label="Payment Status" required>
           <select
             required
             className="w-full border rounded px-3 py-2"
-            value={formData.paymentsStatus}
-            onChange={(e) => handleChange('paymentsStatus', e.target.value)}
+            value={formData.paymentStatus}
+            onChange={(e) => handleChange('paymentStatus', e.target.value)}
           >
-            {paymentStatusOptions.map(status => (
-              <option key={status} value={status}>{status.charAt(0).toUpperCase() + status.slice(1)}</option>
-            ))}
+            <option value="Pending">Pending</option>
+            <option value="Paid">Paid</option>
+            <option value="Overdue">Overdue</option>
           </select>
         </FormField>
 
-        <FormField label="Amount" required>
+        <FormField label="Amount (SAR)" required>
           <input
             type="number"
             required
+            step="0.01"
+            min="0"
             className="w-full border rounded px-3 py-2"
             value={formData.amount}
             onChange={(e) => handleChange('amount', e.target.value)}
+            placeholder="4000"
           />
         </FormField>
 
-        <FormField label="Actual Rent" required>
+        <FormField label="Annual Rent (SAR)" required>
           <input
             type="number"
             required
+            step="0.01"
+            min="0"
             className="w-full border rounded px-3 py-2"
-            value={formData.actualRent}
-            onChange={(e) => handleChange('actualRent', e.target.value)}
+            value={formData.rentAnnually}
+            onChange={(e) => handleChange('rentAnnually', e.target.value)}
+            placeholder="45000"
           />
         </FormField>
 
-        <FormField label="Address" required>
+        <FormField label="Address" required className="sm:col-span-2">
           <textarea
             required
             className="w-full border rounded px-3 py-2"
             value={formData.address}
             onChange={(e) => handleChange('address', e.target.value)}
-            rows="3"
+            rows="2"
+            placeholder="Full property address"
           />
         </FormField>
 
@@ -176,6 +210,7 @@ const HomeRentForm = ({ onSubmit, onCancel, initialData = null }) => {
             className="w-full border rounded px-3 py-2"
             value={formData.contactPerson}
             onChange={(e) => handleChange('contactPerson', e.target.value)}
+            placeholder="John Doe"
           />
         </FormField>
 
@@ -186,19 +221,21 @@ const HomeRentForm = ({ onSubmit, onCancel, initialData = null }) => {
             className="w-full border rounded px-3 py-2"
             value={formData.gtsContact}
             onChange={(e) => handleChange('gtsContact', e.target.value)}
+            placeholder="+966550859388"
           />
         </FormField>
 
-        <FormField label="Comments" className="col-span-2">
+        <FormField label="Comments" className="sm:col-span-2">
           <textarea
             className="w-full border rounded px-3 py-2"
             value={formData.comments}
             onChange={(e) => handleChange('comments', e.target.value)}
             rows="3"
+            placeholder="Additional notes or comments"
           />
         </FormField>
 
-        <FormField label="Documents & Attachments" className="col-span-2">
+        <FormField label="Documents & Attachments" className="sm:col-span-2">
           <AttachmentField
             attachments={formData.attachments}
             onChange={(attachments) => handleChange('attachments', attachments)}
