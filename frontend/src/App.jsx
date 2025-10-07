@@ -1,18 +1,20 @@
 import React, { useState, useEffect } from 'react';
+import { Settings } from 'lucide-react';
 import { checkNotificationPermission, checkAndSendNotifications } from './utils/notificationUtils';
 import Header from './components/layout/Header';
 import TabNavigation from './components/layout/TabNavigation';
+import NotificationSettings from './components/common/NotificationSettings';
 import { vehicleService, homeRentService, electricityService } from './services';
 import Toolbar from './components/layout/Toolbar';
 import StatusLegend from './components/common/StatusLegend';
 import VehiclesContainer from './components/vehicles/VehiclesContainer';
 import HomeRentsContainer from './components/homeRents/HomeRentsContainer';
 import ConfirmDialog from './components/common/ConfirmDialog';
-// Live data only - no mock data
 import ElectricityContainer from './components/electricity/ElectricityContainer';
 
 const App = () => {
   const [activeTab, setActiveTab] = useState('vehicles');
+  const [showSettings, setShowSettings] = useState(false);
   const [counts, setCounts] = useState({
     vehicles: 0,
     homeRents: 0,
@@ -20,7 +22,7 @@ const App = () => {
   });
 
   useEffect(() => {
-    // طلب إذن الإشعارات عند بدء التطبيق
+    // Request notification permission on startup
     checkNotificationPermission();
 
     // Fetch initial counts from API
@@ -49,13 +51,13 @@ const App = () => {
       const { type, count } = event.detail;
       setCounts(prevCounts => ({
         ...prevCounts,
-        [type + 's']: count  // Add 's' to match the counts object keys
+        [type + 's']: count
       }));
     };
 
     window.addEventListener('itemCountUpdate', handleCountUpdate);
 
-    // Check notifications hourly with live data
+    // Check notifications hourly (browser-side backup)
     const checkInterval = setInterval(async () => {
       try {
         const [vehicles, homeRents, electricity] = await Promise.all([
@@ -78,7 +80,6 @@ const App = () => {
   }, []);
 
   const handleTabChange = (tab) => {
-    // Smooth tab transition
     setActiveTab(tab);
   };
 
@@ -86,18 +87,35 @@ const App = () => {
     <div className="min-h-screen bg-gray-100 w-full overflow-hidden">
       <Header />
 
-      {/* Navigation */}
-      <TabNavigation
-        activeTab={activeTab}
-        onTabChange={handleTabChange}
-        vehiclesCount={counts.vehicles}
-        homeRentsCount={counts.homeRents}
-        electricityCount={counts.electricity}
-      />
-
-      {/* Toolbar */}
+      {/* Navigation with Settings Button */}
+      <div className="bg-gray-50 border-b sticky top-0 z-10 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 flex justify-between items-center">
+          <TabNavigation
+            activeTab={activeTab}
+            onTabChange={handleTabChange}
+            vehiclesCount={counts.vehicles}
+            homeRentsCount={counts.homeRents}
+            electricityCount={counts.electricity}
+          />
+          
+          <button
+            onClick={() => setShowSettings(!showSettings)}
+            className="p-2 hover:bg-gray-200 rounded-lg transition"
+            title="Notification Settings"
+          >
+            <Settings size={20} />
+          </button>
+        </div>
+      </div>
 
       <StatusLegend />
+
+      {/* Notification Settings Panel */}
+      {showSettings && (
+        <div className="max-w-7xl mx-auto px-4 py-4">
+          <NotificationSettings />
+        </div>
+      )}
 
       <div className="p-2 sm:p-4 overflow-x-auto">
         <div className={activeTab === 'vehicles' ? 'block' : 'hidden'}>
@@ -112,8 +130,6 @@ const App = () => {
           <ElectricityContainer />
         </div>
       </div>
-
-
     </div>
   );
 };

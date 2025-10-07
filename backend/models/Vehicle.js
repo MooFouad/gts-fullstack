@@ -41,6 +41,19 @@ const vehicleSchema = new mongoose.Schema({
   bodyType: { type: String },
   attachments: [{ type: Object }],
   createdAt: { type: Date, default: Date.now }
+}, { 
+  timestamps: true,
+  toJSON: { virtuals: true }
+});
+
+// Add indexes for better performance
+vehicleSchema.index({ plateNumber: 1 });
+vehicleSchema.index({ licenseExpiryDate: 1 });
+vehicleSchema.index({ inspectionExpiryDate: 1 });
+
+// Add query timeout
+vehicleSchema.pre('find', function() {
+  this.maxTimeMS(5000);
 });
 
 // Add pre-save middleware to ensure dates are valid

@@ -132,7 +132,7 @@ const ElectricityContainer = () => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
         <h2 className="text-xl font-semibold">Electricity Bills</h2>
         <div className="flex flex-wrap gap-2">
-          <ExportButton onClick={handleExport} label="Export Electricity Bills" />
+          {/* <ExportButton onClick={handleExport} label="Export Electricity Bills" /> */}
           <ExportButton onClick={handleExport} label="Export Electricity Bills" />
           <button
             onClick={handleCreate}

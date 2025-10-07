@@ -1,5 +1,7 @@
 // Base API configuration
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 1000;
 
 // Function to test server availability
 const testServerConnection = async (port) => {
@@ -10,6 +12,7 @@ const testServerConnection = async (port) => {
     }
   } catch (error) {
     console.log(`Port ${port} not responding, trying next...`);
+    console.log(error)
   }
   return null;
 };
@@ -40,53 +43,39 @@ const initializeApi = async () => {
       apiBaseUrl = API_BASE_URL; // Fallback to default
     }
   }
-};
+}
 
 class ApiService {
   constructor(baseURL) {
     this.baseURL = baseURL;
   }
 
-  async request(endpoint, options = {}) {
-    await initializeApi();
-    
-    const url = `${apiBaseUrl}${endpoint}`;
-    const config = {
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-        ...options.headers,
-      },
-      ...options,
-      signal: AbortSignal.timeout(15000) // Increase timeout
-    };
-
+  async request(endpoint, options = {}, retryCount = 0) {
     try {
-      console.log(`🔄 Request: ${options.method || 'GET'} ${url}`);
-      const response = await fetch(url, config);
-      
-      if (response.status === 404) {
-        console.error(`❌ Route not found: ${url}`);
-        throw new Error(`API route not found: ${endpoint}`);
-      }
-
-      let data;
-      try {
-        data = await response.json();
-      } catch (parseError) {
-        console.error('Response parsing error:', parseError);
-        throw new Error('Invalid server response');
-      }
+      const response = await fetch(`${this.baseURL}${endpoint}`, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          ...options.headers,
+        },
+        signal: AbortSignal.timeout(15000)
+      });
 
       if (!response.ok) {
-        console.error(`❌ Server error:`, data);
-        throw new Error(data.error || `Server error: ${response.status}`);
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
+      const data = await response.json();
       return data;
-    } catch (err) {
-      console.error(`❌ Request failed:`, err);
-      throw err;
+    } catch (error) {
+      console.error(`API Error (attempt ${retryCount + 1}):`, error);
+
+      if (retryCount < MAX_RETRIES) {
+        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+        return this.request(endpoint, options, retryCount + 1);
+      }
+
+      throw new Error(`Failed after ${MAX_RETRIES} attempts: ${error.message}`);
     }
   }
 

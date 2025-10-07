@@ -8,7 +8,8 @@ router.get('/', async (req, res) => {
     console.log('Fetching vehicles...');
     const vehicles = await Vehicle.find({})
       .lean()
-      .sort({ createdAt: -1 });
+      .maxTimeMS(5000) // Set maximum execution time
+      .exec();
 
     // Format dates safely
     const formattedVehicles = vehicles.map(vehicle => {
@@ -28,6 +29,9 @@ router.get('/', async (req, res) => {
     res.json(formattedVehicles);
   } catch (error) {
     console.error('Error fetching vehicles:', error);
+    if (error.name === 'MongooseError' && error.message.includes('timed out')) {
+      return res.status(503).json({ error: 'Database operation timed out. Please try again.' });
+    }
     res.status(500).json({ error: error.message });
   }
 });
