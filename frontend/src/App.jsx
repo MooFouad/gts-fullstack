@@ -11,6 +11,7 @@ import VehiclesContainer from './components/vehicles/VehiclesContainer';
 import HomeRentsContainer from './components/homeRents/HomeRentsContainer';
 import ConfirmDialog from './components/common/ConfirmDialog';
 import ElectricityContainer from './components/electricity/ElectricityContainer';
+import { initializeNotifications } from './services/notificationService';
 
 const App = () => {
   const [activeTab, setActiveTab] = useState('vehicles');
@@ -77,6 +78,12 @@ const App = () => {
       window.removeEventListener('itemCountUpdate', handleCountUpdate);
       clearInterval(checkInterval);
     };
+  }, []);
+
+  useEffect(() => {
+    initializeNotifications().catch(error => {
+      console.error('Failed to initialize notifications:', error);
+    });
   }, []);
 
   const handleTabChange = (tab) => {

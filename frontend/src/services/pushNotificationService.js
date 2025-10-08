@@ -1,3 +1,4 @@
+// frontend/src/services/pushNotificationService.js
 import api from './api';
 
 class PushNotificationService {
@@ -25,7 +26,7 @@ class PushNotificationService {
 
   // Check if notifications are supported
   isSupported() {
-    return 'serviceWorker' in navigator && 'PushManager' in window;
+    return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
   }
 
   // Register service worker
@@ -35,19 +36,38 @@ class PushNotificationService {
         throw new Error('Push notifications are not supported in this browser');
       }
 
-      this.registration = await navigator.serviceWorker.register('/sw.js');
-      console.log('✅ Service Worker registered');
+      // Check if service worker is already registered
+      const existingRegistration = await navigator.serviceWorker.getRegistration();
+      if (existingRegistration) {
+        console.log('✅ Service Worker already registered');
+        this.registration = existingRegistration;
+        return existingRegistration;
+      }
+
+      // Register new service worker
+      this.registration = await navigator.serviceWorker.register('/sw.js', {
+        scope: '/'
+      });
+      
+      console.log('✅ Service Worker registered successfully');
+      
+      // Wait for service worker to be ready
+      await navigator.serviceWorker.ready;
       
       return this.registration;
     } catch (error) {
       console.error('❌ Service Worker registration failed:', error);
-      throw error;
+      throw new Error(`Failed to register service worker: ${error.message}`);
     }
   }
 
   // Request notification permission
   async requestPermission() {
     try {
+      if (!('Notification' in window)) {
+        throw new Error('Notifications not supported');
+      }
+
       const permission = await Notification.requestPermission();
       console.log('Notification permission:', permission);
       
@@ -65,26 +85,38 @@ class PushNotificationService {
   // Subscribe to push notifications
   async subscribe(email) {
     try {
+      // Register service worker first
       if (!this.registration) {
         await this.registerServiceWorker();
       }
 
+      // Request notification permission
       const permission = await this.requestPermission();
       if (permission !== 'granted') {
         throw new Error('Notification permission not granted');
       }
 
-      // Get VAPID public key from server
+      // Get VAPID public key
       let publicKey = this.vapidPublicKey;
       if (!publicKey) {
+        console.log('Fetching VAPID key from server...');
         const response = await api.get('/notifications/vapid-public-key');
         publicKey = response.publicKey;
       }
 
+      if (!publicKey) {
+        throw new Error('VAPID public key not found');
+      }
+
+      console.log('Using VAPID public key:', publicKey.substring(0, 20) + '...');
+
       const convertedVapidKey = this.urlBase64ToUint8Array(publicKey);
 
+      // Wait for service worker to be ready
+      const swRegistration = await navigator.serviceWorker.ready;
+
       // Subscribe to push notifications
-      this.subscription = await this.registration.pushManager.subscribe({
+      this.subscription = await swRegistration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: convertedVapidKey
       });
@@ -105,7 +137,7 @@ class PushNotificationService {
       return { success: true, subscription: this.subscription };
     } catch (error) {
       console.error('❌ Error subscribing to push notifications:', error);
-      throw error;
+      throw new Error(`Subscription failed: ${error.message}`);
     }
   }
 
@@ -133,14 +165,35 @@ class PushNotificationService {
   // Check if already subscribed
   async isSubscribed() {
     try {
-      if (!this.registration) {
-        this.registration = await navigator.serviceWorker.ready;
+      if (!this.isSupported()) {
+        console.log('Push notifications not supported');
+        return false;
       }
 
+      // Get service worker registration
+      if (!this.registration) {
+        this.registration = await navigator.serviceWorker.getRegistration();
+      }
+
+      // If no registration found, not subscribed
+      if (!this.registration) {
+        console.log('No service worker registration found');
+        return false;
+      }
+
+      // Wait for service worker to be ready
+      await navigator.serviceWorker.ready;
+
+      // Get existing subscription
       this.subscription = await this.registration.pushManager.getSubscription();
-      return !!this.subscription;
+      
+      const isSubscribed = !!this.subscription;
+      console.log('Subscription status:', isSubscribed);
+      
+      return isSubscribed;
     } catch (error) {
       console.error('Error checking subscription status:', error);
+      // Return false instead of throwing to prevent blocking the app
       return false;
     }
   }
