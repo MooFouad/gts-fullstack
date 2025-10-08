@@ -5,65 +5,37 @@ require('dotenv').config();
 
 const app = express();
 
-// MongoDB connection options - removed deprecated options
+// MongoDB connection options
 const mongooseOptions = {
-  serverSelectionTimeoutMS: 15000,
+  serverSelectionTimeoutMS: 30000,
   socketTimeoutMS: 45000,
-  family: 4,
-  retryWrites: true,
-  w: 'majority'
+  maxPoolSize: 10,
+  family: 4
 };
 
-// Connect to MongoDB
-const connectDB = async () => {
-  try {
-    console.log('Connecting to MongoDB Atlas...');
-    await mongoose.connect(process.env.MONGODB_URI, mongooseOptions);
-    console.log('✅ MongoDB Connected Successfully');
-    
-    // Add connection event listeners
-    mongoose.connection.on('error', err => {
-      console.error('MongoDB Error:', err);
-    });
-    
-    mongoose.connection.on('disconnected', () => {
-      console.log('MongoDB Disconnected - Attempting to reconnect...');
-    });
-  } catch (err) {
+// MongoDB connection
+mongoose.connect(process.env.MONGODB_URI, mongooseOptions)
+  .then(() => console.log('✅ MongoDB Connected'))
+  .catch(err => {
     console.error('MongoDB Connection Error:', err);
     process.exit(1);
-  }
-};
+  });
 
-// Initialize connection
-connectDB();
-
-// Middleware
 app.use(cors());
-app.use(express.json({ limit : '50mb'}));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(express.json({ limit: '50mb' }));
 
 // Routes
-const vehicleRoutes = require('./routes/vehicleRoutes');
-const homeRentRoutes = require('./routes/homeRentRoutes');
-const electricityRoutes = require('./routes/electricityRoutes');
-const dashboardRoutes = require('./routes/dashboardRoutes');
-const testDataRoutes = require('./routes/testDataRoutes');
-const importRoutes = require('./routes/importRoutes');
+app.use('/api/vehicles', require('./routes/vehicleRoutes'));
+app.use('/api/home-rents', require('./routes/homeRentRoutes'));
+app.use('/api/electricity', require('./routes/electricityRoutes'));
+app.use('/api/notifications', require('./routes/notificationRoutes'));
+app.use('/api/import', require('./routes/importRoutes'));
 
-
-// Import notification scheduler
-const notificationScheduler = require('./services/notificationScheduler');
-const notificationRoutes = require('./routes/notificationRoutes');
-
-// Use routes with correct paths
-app.use('/api/vehicles', vehicleRoutes);
-app.use('/api/home-rents', homeRentRoutes); // Fixed: ensure hyphenated route
-app.use('/api/electricity', electricityRoutes);
-app.use('/api/dashboard', dashboardRoutes);
-app.use('/api/test', testDataRoutes);
-app.use('/api/import', importRoutes);
-app.use('/api/notifications', notificationRoutes);
+// Error handler
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ error: err.message });
+});
 
 // Health Check
 app.get('/api/health', (req, res) => {
@@ -75,19 +47,9 @@ app.get('/api/health', (req, res) => {
       vehicles: '/api/vehicles',
       homeRents: '/api/home-rents',
       electricity: '/api/electricity',
-      dashboard: '/api/dashboard',
-      import: '/api/import',
-      notifications: '/api/notifications'
+      notifications: '/api/notifications',
+      import: '/api/import'
     }
-  });
-});
-
-// Global error handler
-app.use((err, req, res, next) => {
-  console.error('Server Error:', err);
-  res.status(500).json({ 
-    error: err.message || 'Internal Server Error',
-    path: req.path
   });
 });
 
@@ -100,15 +62,11 @@ app.use((req, res) => {
       '/api/vehicles',
       '/api/home-rents',
       '/api/electricity',
-      '/api/dashboard',
-      '/api/import',
-      '/api/notifications'
+      '/api/notifications',
+      '/api/import'
     ]
   });
 });
-
-
-
 
 // Start server
 const startServer = async () => {
@@ -121,12 +79,8 @@ const startServer = async () => {
       console.log(`🚗 Vehicles: http://localhost:${PORT}/api/vehicles`);
       console.log(`🏠 Home Rents: http://localhost:${PORT}/api/home-rents`);
       console.log(`⚡ Electricity: http://localhost:${PORT}/api/electricity`);
-      console.log(`📥 Import: http://localhost:${PORT}/api/import`);
     });
     
-    // Start notification scheduler
-    notificationScheduler.start();
-
     server.on('error', (err) => {
       console.error('Server error:', err);
       process.exit(1);

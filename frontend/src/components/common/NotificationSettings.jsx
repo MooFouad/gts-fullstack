@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, BellOff, Mail, TestTube, AlertCircle } from 'lucide-react';
+import { Bell, BellOff, Mail, TestTube, AlertCircle, RefreshCw } from 'lucide-react';
 import pushNotificationService from '../../services/pushNotificationService';
 
 const NotificationSettings = () => {
@@ -7,74 +7,92 @@ const NotificationSettings = () => {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
-  const [debugInfo, setDebugInfo] = useState('');
+  const [debugLog, setDebugLog] = useState([]);
+
+  const addDebugLog = (msg) => {
+    console.log(msg);
+    setDebugLog(prev => [...prev, `${new Date().toLocaleTimeString()}: ${msg}`]);
+  };
 
   useEffect(() => {
     checkSubscription();
+    const savedEmail = localStorage.getItem('gts_notification_email');
+    if (savedEmail) {
+      setEmail(savedEmail);
+    }
   }, []);
 
   const checkSubscription = async () => {
     try {
-      setDebugInfo('Checking subscription status...');
+      addDebugLog('🔍 Checking subscription status...');
       
-      // Check if browser supports notifications
       if (!pushNotificationService.isSupported()) {
-        setDebugInfo('❌ Browser does not support push notifications');
+        addDebugLog('❌ Browser does not support push notifications');
         return;
       }
 
-      setDebugInfo('✅ Browser supports push notifications');
+      addDebugLog('✅ Browser supports push notifications');
 
-      // Check current subscription
       const subscribed = await pushNotificationService.isSubscribed();
       setIsSubscribed(subscribed);
       
-      const savedEmail = localStorage.getItem('gts_notification_email');
-      if (savedEmail) {
-        setEmail(savedEmail);
-      }
-
-      setDebugInfo(subscribed ? '✅ Already subscribed' : 'ℹ️ Not subscribed yet');
+      addDebugLog(subscribed ? '✅ Already subscribed' : 'ℹ️ Not subscribed yet');
     } catch (error) {
       console.error('Error checking subscription:', error);
-      setDebugInfo(`❌ Error: ${error.message}`);
+      addDebugLog(`❌ Error: ${error.message}`);
     }
   };
 
   const handleSubscribe = async () => {
-    if (!email) {
-      setMessage('Please enter your email address');
+    if (!email || !email.includes('@')) {
+      setMessage('Please enter a valid email address');
       return;
     }
 
     setLoading(true);
     setMessage('');
-    setDebugInfo('Starting subscription process...');
+    setDebugLog([]); // Clear previous logs
+    addDebugLog('🔔 Starting subscription process...');
 
     try {
-      // Step 1: Check browser support
+      // Check browser support
       if (!pushNotificationService.isSupported()) {
         throw new Error('Your browser does not support push notifications');
       }
-      setDebugInfo('✅ Browser check passed');
+      addDebugLog('✅ Browser support verified');
 
-      // Step 2: Check notification permission
+      // Check notification permission
+      addDebugLog(`Current permission: ${Notification.permission}`);
+      
       if (Notification.permission === 'denied') {
-        throw new Error('Notification permission was denied. Please enable it in your browser settings.');
+        throw new Error('Notification permission denied. Please enable it in browser settings.');
       }
-      setDebugInfo('✅ Permission check passed');
-
-      // Step 3: Subscribe
-      setDebugInfo('Registering service worker...');
-      await pushNotificationService.subscribe(email);
+      
+      // Subscribe
+      addDebugLog('📝 Calling subscribe method...');
+      const result = await pushNotificationService.subscribe(email);
+      
+      addDebugLog('✅ Subscribe method completed');
+      addDebugLog(`Result: ${JSON.stringify(result.success)}`);
       
       setIsSubscribed(true);
       setMessage('✅ Successfully subscribed to notifications!');
-      setDebugInfo('✅ Subscription complete!');
+      addDebugLog('✅ Subscription complete!');
+      
+      // Verify subscription was created
+      addDebugLog('🔍 Verifying subscription...');
+      const isNowSubscribed = await pushNotificationService.isSubscribed();
+      addDebugLog(`Verification result: ${isNowSubscribed ? '✅ Confirmed' : '❌ Not found'}`);
+      
+      if (!isNowSubscribed) {
+        throw new Error('Subscription verification failed - subscription not found after creation');
+      }
+      
     } catch (error) {
-      console.error('Subscription error:', error);
+      console.error('❌ Subscription error:', error);
+      addDebugLog(`❌ FAILED: ${error.message}`);
+      addDebugLog(`Error stack: ${error.stack}`);
       setMessage(`❌ Error: ${error.message}`);
-      setDebugInfo(`❌ Failed: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -83,69 +101,77 @@ const NotificationSettings = () => {
   const handleUnsubscribe = async () => {
     setLoading(true);
     setMessage('');
-    setDebugInfo('Unsubscribing...');
+    setDebugLog([]);
+    addDebugLog('🔄 Unsubscribing...');
 
     try {
       await pushNotificationService.unsubscribe();
       setIsSubscribed(false);
       setEmail('');
       setMessage('✅ Successfully unsubscribed');
-      setDebugInfo('✅ Unsubscribed successfully');
+      addDebugLog('✅ Unsubscribed successfully');
     } catch (error) {
       setMessage(`❌ Error: ${error.message}`);
-      setDebugInfo(`❌ Error: ${error.message}`);
+      addDebugLog(`❌ Error: ${error.message}`);
     } finally {
       setLoading(false);
     }
   };
 
   const handleTestNotification = async () => {
-    if (!email) {
-      setMessage('Please enter your email address');
+    if (!email || !email.includes('@')) {
+      setMessage('Please enter a valid email address');
       return;
     }
 
     setLoading(true);
     setMessage('');
-    setDebugInfo('Sending test notification...');
+    addDebugLog('🧪 Sending test notification...');
 
     try {
-      // First check if subscribed
       const subscribed = await pushNotificationService.isSubscribed();
       if (!subscribed) {
         setMessage('⚠️ Please subscribe first before sending test notifications');
-        setDebugInfo('⚠️ Not subscribed');
+        addDebugLog('⚠️ Not subscribed');
         setLoading(false);
         return;
       }
 
       await pushNotificationService.sendTestNotification(email);
-      setMessage('✅ Test notification sent! Check your browser and email.');
-      setDebugInfo('✅ Test notification sent');
+      setMessage('✅ Test notification sent! Check your browser.');
+      addDebugLog('✅ Test notification sent');
     } catch (error) {
       setMessage(`❌ Error: ${error.message}`);
-      setDebugInfo(`❌ Error: ${error.message}`);
+      addDebugLog(`❌ Error: ${error.message}`);
     } finally {
       setLoading(false);
     }
   };
 
-  // Manual service worker check
-  const checkServiceWorker = async () => {
-    setDebugInfo('Checking service worker status...');
+  const handleRefresh = async () => {
+    setLoading(true);
+    setMessage('');
+    addDebugLog('🔄 Refreshing...');
+    
     try {
-      if ('serviceWorker' in navigator) {
-        const registration = await navigator.serviceWorker.getRegistration();
-        if (registration) {
-          setDebugInfo(`✅ Service Worker registered at: ${registration.scope}`);
-        } else {
-          setDebugInfo('⚠️ No service worker registered');
-        }
-      } else {
-        setDebugInfo('❌ Service workers not supported');
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      addDebugLog(`Found ${registrations.length} service worker(s)`);
+      
+      for (let registration of registrations) {
+        addDebugLog(`Unregistering: ${registration.scope}`);
+        await registration.unregister();
       }
+      
+      addDebugLog('✅ All service workers unregistered');
+      addDebugLog('Reloading page in 2 seconds...');
+      
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
     } catch (error) {
-      setDebugInfo(`❌ Error: ${error.message}`);
+      setMessage(`❌ Error: ${error.message}`);
+      addDebugLog(`❌ Error: ${error.message}`);
+      setLoading(false);
     }
   };
 
@@ -173,10 +199,12 @@ const NotificationSettings = () => {
       </div>
 
       <div className="space-y-4">
-        {/* Debug Info */}
-        {debugInfo && (
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-            <p className="text-sm font-mono text-gray-700">{debugInfo}</p>
+        {/* Debug Log */}
+        {debugLog.length > 0 && (
+          <div className="bg-gray-900 text-green-400 rounded-lg p-4 font-mono text-xs max-h-64 overflow-y-auto">
+            {debugLog.map((log, index) => (
+              <div key={index} className="mb-1">{log}</div>
+            ))}
           </div>
         )}
 
@@ -212,7 +240,7 @@ const NotificationSettings = () => {
           {!isSubscribed ? (
             <button
               onClick={handleSubscribe}
-              disabled={loading || !email}
+              disabled={loading || !email || !email.includes('@')}
               className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Bell size={18} />
@@ -231,7 +259,7 @@ const NotificationSettings = () => {
 
           <button
             onClick={handleTestNotification}
-            disabled={loading || !email}
+            disabled={loading || !email || !email.includes('@')}
             className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
           >
             <TestTube size={18} />
@@ -239,10 +267,13 @@ const NotificationSettings = () => {
           </button>
 
           <button
-            onClick={checkServiceWorker}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+            onClick={handleRefresh}
+            disabled={loading}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50"
+            title="Clear cache and reload"
           >
-            Check SW Status
+            <RefreshCw size={18} />
+            Refresh
           </button>
         </div>
 
@@ -250,7 +281,6 @@ const NotificationSettings = () => {
           <h3 className="font-semibold text-blue-900 mb-2">📋 How it works:</h3>
           <ul className="text-sm text-blue-800 space-y-1">
             <li>• Browser notifications (even when browser is closed)</li>
-            <li>• Email notifications to your inbox</li>
             <li>• Automatic daily checks at 9:00 AM</li>
             <li>• Alerts 10 days before expiration</li>
             <li>• Covers vehicles, rentals, and electricity bills</li>

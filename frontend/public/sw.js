@@ -1,17 +1,15 @@
 // Service Worker for GTS Dashboard Push Notifications
-// Place this file at: frontend/public/sw.js
+// Save this file as: frontend/public/sw.js
 
 console.log('Service Worker: Loading...');
 
 self.addEventListener('install', (event) => {
   console.log('Service Worker: Installing...');
-  // Skip waiting to activate immediately
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
   console.log('Service Worker: Activating...');
-  // Claim all clients immediately
   event.waitUntil(clients.claim());
   console.log('Service Worker: Activated and claimed clients');
 });
@@ -19,7 +17,6 @@ self.addEventListener('activate', (event) => {
 // Handle push notifications
 self.addEventListener('push', (event) => {
   console.log('Push notification received');
-  console.log('Push event data:', event.data);
 
   let notificationData = {
     title: 'GTS Dashboard',
@@ -29,7 +26,6 @@ self.addEventListener('push', (event) => {
     data: {}
   };
 
-  // Parse notification data from the push event
   if (event.data) {
     try {
       const payload = event.data.json();
@@ -52,7 +48,6 @@ self.addEventListener('push', (event) => {
 
   console.log('Showing notification:', notificationData.title);
 
-  // Show the notification
   event.waitUntil(
     self.registration.showNotification(notificationData.title, {
       body: notificationData.body,
@@ -76,53 +71,25 @@ self.addEventListener('push', (event) => {
   );
 });
 
-self.addEventListener('push', function(event) {
-  const options = {
-    body: event.data.text(),
-    icon: '/icon.png',
-    badge: '/badge.png',
-    vibrate: [100, 50, 100],
-    data: {
-      dateOfArrival: Date.now(),
-      primaryKey: '1'
-    }
-  };
-
-  event.waitUntil(
-    self.registration.showNotification('GTS Dashboard', options)
-  );
-});
-
 // Handle notification clicks
 self.addEventListener('notificationclick', (event) => {
   console.log('Notification clicked:', event.action);
-
   event.notification.close();
 
   if (event.action === 'open' || !event.action) {
-    // Open the app
     event.waitUntil(
       clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-        // Check if there's already a window open
         for (let client of clientList) {
           if (client.url === self.location.origin + '/' && 'focus' in client) {
             return client.focus();
           }
         }
-        // If no window is open, open a new one
         if (clients.openWindow) {
           return clients.openWindow(event.notification.data.url || '/');
         }
       })
     );
   }
-});
-
-self.addEventListener('notificationclick', function(event) {
-  event.notification.close();
-  event.waitUntil(
-    clients.openWindow('/')
-  );
 });
 
 // Handle notification close
