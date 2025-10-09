@@ -9,13 +9,13 @@ export const useDataManagement = (type) => {
   const getEndpoint = (type) => {
     switch(type) {
       case 'homeRent':
-        return '/home-rents';
+        return '/home-rents'; // Match backend route
       case 'vehicle':
         return '/vehicles';
       case 'electricity':
         return '/electricity';
       default:
-        throw new Error(`Unknown type: ${type}`);
+        return `/${type}s`;
     }
   };
 
@@ -25,7 +25,9 @@ export const useDataManagement = (type) => {
       setError(null);
       const endpoint = getEndpoint(type);
       const response = await api.get(endpoint);
-      setData(Array.isArray(response) ? response : []);
+      // Handle new response format: { success: true, data: [...] }
+      const items = response?.data || response;
+      setData(Array.isArray(items) ? items : []);
     } catch (err) {
       console.error(`Error fetching ${type}:`, err);
       setError(err.message);
@@ -35,12 +37,56 @@ export const useDataManagement = (type) => {
     }
   }, [type]);
 
-  const addItem = useCallback(async (newItem) => {
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const validateData = useCallback((items) => {
+    if (!Array.isArray(items)) {
+      console.error('Invalid data format:', items);
+      return [];
+    }
+
+    return items.map(item => {
+      // Ensure all required fields exist
+      const validatedItem = {
+        _id: item._id || '',
+        name: item.name || '',
+        location: item.location || '',
+        contractNumber: item.contractNumber || '',
+        contractStartingDate: item.contractStartingDate || '',
+        contractEndingDate: item.contractEndingDate || '',
+        contractStatus: item.contractStatus || 'Active',
+        rentAnnually: Number(item.rentAnnually) || 0,
+        contactNo: item.contactNo || '',
+        gts: item.gts || '',
+        attachments: Array.isArray(item.attachments) ? item.attachments : []
+      };
+
+      // Ensure dates are in correct format
+      try {
+        if (validatedItem.contractStartingDate) {
+          new Date(validatedItem.contractStartingDate).toISOString();
+        }
+        if (validatedItem.contractEndingDate) {
+          new Date(validatedItem.contractEndingDate).toISOString();
+        }
+      } catch (error) {
+        console.error('Invalid date format:', error);
+      }
+
+      return validatedItem;
+    });
+  }, []);
+
+  const addItem = useCallback(async (data) => {
     try {
       const endpoint = getEndpoint(type);
-      const response = await api.post(endpoint, newItem);
-      setData(prev => [...prev, response]);
-      return response;
+      const response = await api.post(endpoint, data);
+      // Handle new response format: { success: true, data: {...} }
+      const item = response?.data || response;
+      setData(prev => [...prev, item]);
+      return item;
     } catch (err) {
       throw new Error(`Failed to add ${type}: ${err.message}`);
     }
@@ -50,8 +96,10 @@ export const useDataManagement = (type) => {
     try {
       const endpoint = getEndpoint(type);
       const response = await api.put(`${endpoint}/${id}`, updatedItem);
-      setData(prev => prev.map(item => item._id === id ? response : item));
-      return response;
+      // Handle new response format: { success: true, data: {...} }
+      const updatedData = response?.data || response;
+      setData(prev => prev.map(item => item._id === id ? updatedData : item));
+      return updatedData;
     } catch (err) {
       throw new Error(`Failed to update ${type}: ${err.message}`);
     }
@@ -63,13 +111,18 @@ export const useDataManagement = (type) => {
       await api.delete(`${endpoint}/${id}`);
       setData(prev => prev.filter(item => item._id !== id));
     } catch (err) {
+      console.error('Delete error:', err);
       throw new Error(`Failed to delete ${type}: ${err.message}`);
     }
   }, [type]);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  return { data, loading, error, addItem, updateItem, deleteItem, refreshData: fetchData };
+  return {
+    data,
+    loading,
+    error,
+    addItem,
+    updateItem,
+    deleteItem,
+    refreshData: fetchData
+  };
 };

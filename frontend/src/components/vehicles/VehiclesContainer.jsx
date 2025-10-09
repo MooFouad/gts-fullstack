@@ -5,7 +5,7 @@ import FormDialog from '../common/FormDialog';
 import ConfirmDialog from '../common/ConfirmDialog';
 import Toolbar from '../layout/Toolbar';
 import ExportButton from '../common/ExportButton';
-import { useDataManagementNew as useDataManagement } from '../../hooks/useDataManagementNew';
+import { useDataManagement } from '../../hooks/useDataManagement';
 import { exportVehiclesToExcel } from '../../utils/excelUtils';
 
 const VehiclesContainer = () => {

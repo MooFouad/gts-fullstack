@@ -1,7 +1,20 @@
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
+const helmet = require('helmet');
+const mongoSanitize = require('express-mongo-sanitize');
+const rateLimit = require('express-rate-limit');
 require('dotenv').config();
+
+// Validate environment variables
+const validateEnv = require('./config/validateEnv');
+validateEnv();
+
+// Error handlers
+const { errorHandler, handleUnhandledRejection, handleUncaughtException } = require('./middleware/errorHandler');
+
+// Handle uncaught exceptions
+process.on('uncaughtException', handleUncaughtException);
 
 const app = express();
 
@@ -21,8 +34,38 @@ mongoose.connect(process.env.MONGODB_URI, mongooseOptions)
     process.exit(1);
   });
 
-app.use(cors());
-app.use(express.json({ limit: '50mb' }));
+// Security middleware
+app.use(helmet());
+
+// CORS configuration
+const corsOptions = {
+  origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:5173'],
+  credentials: true,
+  optionsSuccessStatus: 200
+};
+app.use(cors(corsOptions));
+
+// Body parser with size limits
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Sanitize data against NoSQL injection
+app.use(mongoSanitize());
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: {
+    success: false,
+    message: 'Too many requests from this IP, please try again later.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Apply rate limiting to all API routes
+app.use('/api/', limiter);
 
 // Routes
 app.use('/api/vehicles', require('./routes/vehicleRoutes'));
@@ -31,11 +74,8 @@ app.use('/api/electricity', require('./routes/electricityRoutes'));
 app.use('/api/notifications', require('./routes/notificationRoutes'));
 app.use('/api/import', require('./routes/importRoutes'));
 
-// Error handler
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ error: err.message });
-});
+// Use centralized error handler
+app.use(errorHandler);
 
 // Health Check
 app.get('/api/health', (req, res) => {
@@ -92,3 +132,6 @@ const startServer = async () => {
 };
 
 startServer();
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', handleUnhandledRejection);

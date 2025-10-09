@@ -1,119 +1,127 @@
 const express = require('express');
 const router = express.Router();
 const Vehicle = require('../models/Vehicle');
+const { AppError } = require('../middleware/errorHandler');
+const validate = require('../middleware/validate');
+const {
+  createVehicleValidator,
+  updateVehicleValidator,
+  deleteVehicleValidator
+} = require('../validators/vehicleValidator');
 
 // GET all vehicles
-router.get('/', async (req, res) => {
+router.get('/', async (req, res, next) => {
   try {
-    console.log('Fetching vehicles...');
     const vehicles = await Vehicle.find({})
       .lean()
-      .maxTimeMS(5000) // Set maximum execution time
+      .maxTimeMS(5000)
       .exec();
 
-    // Format dates safely
-    const formattedVehicles = vehicles.map(vehicle => {
-      // Create new object with formatted dates
-      return {
-        ...vehicle,
-        licenseExpiryDate: vehicle.licenseExpiryDate ? 
-          new Date(vehicle.licenseExpiryDate).toISOString().split('T')[0] : null,
-        inspectionExpiryDate: vehicle.inspectionExpiryDate ? 
-          new Date(vehicle.inspectionExpiryDate).toISOString().split('T')[0] : null,
-        istemarahIssueDate: vehicle.istemarahIssueDate ? 
-          new Date(vehicle.istemarahIssueDate).toISOString().split('T')[0] : null,
-      };
-    });
+    const formattedVehicles = vehicles.map(vehicle => ({
+      ...vehicle,
+      licenseExpiryDate: vehicle.licenseExpiryDate ?
+        new Date(vehicle.licenseExpiryDate).toISOString().split('T')[0] : null,
+      inspectionExpiryDate: vehicle.inspectionExpiryDate ?
+        new Date(vehicle.inspectionExpiryDate).toISOString().split('T')[0] : null,
+      istemarahIssueDate: vehicle.istemarahIssueDate ?
+        new Date(vehicle.istemarahIssueDate).toISOString().split('T')[0] : null,
+    }));
 
-    console.log(`Found ${vehicles.length} vehicles`);
-    res.json(formattedVehicles);
+    res.json({
+      success: true,
+      count: vehicles.length,
+      data: formattedVehicles
+    });
   } catch (error) {
-    console.error('Error fetching vehicles:', error);
     if (error.name === 'MongooseError' && error.message.includes('timed out')) {
-      return res.status(503).json({ error: 'Database operation timed out. Please try again.' });
+      return next(new AppError('Database operation timed out. Please try again.', 503));
     }
-    res.status(500).json({ error: error.message });
+    next(error);
   }
 });
 
 // GET single vehicle
-router.get('/:id', async (req, res) => {
+router.get('/:id', async (req, res, next) => {
   try {
     const vehicle = await Vehicle.findById(req.params.id);
-    if (!vehicle) return res.status(404).json({ error: 'Vehicle not found' });
-    res.json(vehicle);
+    if (!vehicle) {
+      return next(new AppError('Vehicle not found', 404));
+    }
+    res.json({
+      success: true,
+      data: vehicle
+    });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    next(error);
   }
 });
 
 // CREATE vehicle
-router.post('/', async (req, res) => {
+router.post('/', createVehicleValidator, validate, async (req, res, next) => {
   try {
     const vehicle = new Vehicle(req.body);
     await vehicle.save();
-    res.status(201).json(vehicle);
+    res.status(201).json({
+      success: true,
+      message: 'Vehicle created successfully',
+      data: vehicle
+    });
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    next(error);
   }
 });
 
 // UPDATE vehicle
-router.put('/:id', async (req, res) => {
+router.put('/:id', updateVehicleValidator, validate, async (req, res, next) => {
   try {
-    console.log('Update request received for vehicle ID:', req.params.id);
-    console.log('Update data:', req.body);
-
-    // Validate MongoDB ID format
-    if (!req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
-      console.error('Invalid MongoDB ID format:', req.params.id);
-      return res.status(400).json({ error: 'Invalid vehicle ID format' });
-    }
-
-    // Check if vehicle exists first
     const existingVehicle = await Vehicle.findById(req.params.id);
     if (!existingVehicle) {
-      console.error('Vehicle not found:', req.params.id);
-      return res.status(404).json({ error: 'Vehicle not found' });
+      return next(new AppError('Vehicle not found', 404));
     }
 
-    // Perform the update
     const vehicle = await Vehicle.findByIdAndUpdate(
       req.params.id,
-      { ...req.body, _id: req.params.id }, // Ensure _id is preserved
+      { ...req.body, _id: req.params.id },
       { new: true, runValidators: true }
     );
 
-    console.log('Vehicle updated successfully:', vehicle);
-    res.json(vehicle);
-  } catch (error) {
-    console.error('Error updating vehicle:', error);
-    res.status(400).json({
-      error: error.message,
-      type: error.name,
-      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    res.json({
+      success: true,
+      message: 'Vehicle updated successfully',
+      data: vehicle
     });
+  } catch (error) {
+    next(error);
   }
 });
 
 // DELETE vehicle
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', deleteVehicleValidator, validate, async (req, res, next) => {
   try {
     const vehicle = await Vehicle.findByIdAndDelete(req.params.id);
-    if (!vehicle) return res.status(404).json({ error: 'Vehicle not found' });
-    res.json({ message: 'Vehicle deleted successfully', id: req.params.id });
+    if (!vehicle) {
+      return next(new AppError('Vehicle not found', 404));
+    }
+    res.json({
+      success: true,
+      message: 'Vehicle deleted successfully',
+      data: { id: req.params.id }
+    });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    next(error);
   }
 });
 
 // GET count
-router.get('/count/total', async (req, res) => {
+router.get('/count/total', async (req, res, next) => {
   try {
     const count = await Vehicle.countDocuments();
-    res.json({ count });
+    res.json({
+      success: true,
+      count
+    });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    next(error);
   }
 });
 

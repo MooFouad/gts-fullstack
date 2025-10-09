@@ -1,116 +1,131 @@
 const express = require('express');
 const router = express.Router();
 const Electricity = require('../models/Electricity');
+const { AppError } = require('../middleware/errorHandler');
+const validate = require('../middleware/validate');
+const {
+  createElectricityValidator,
+  updateElectricityValidator,
+  deleteElectricityValidator
+} = require('../validators/electricityValidator');
 
 // GET all electricity bills
-router.get('/', async (req, res) => {
+router.get('/', async (req, res, next) => {
   try {
-    console.log('Fetching electricity bills...');
     const bills = await Electricity.find({}).sort({ createdAt: -1 });
-    console.log(`Found ${bills.length} electricity bills`);
-    res.json(bills);
+    res.json({
+      success: true,
+      count: bills.length,
+      data: bills
+    });
   } catch (error) {
-    console.error('Error fetching electricity bills:', error);
-    res.status(500).json({ error: error.message });
+    next(error);
   }
 });
 
 // GET single electricity bill
-router.get('/:id', async (req, res) => {
+router.get('/:id', async (req, res, next) => {
   try {
     const bill = await Electricity.findById(req.params.id);
-    if (!bill) return res.status(404).json({ error: 'Electricity bill not found' });
-    res.json(bill);
+    if (!bill) {
+      return next(new AppError('Electricity bill not found', 404));
+    }
+    res.json({
+      success: true,
+      data: bill
+    });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    next(error);
   }
 });
 
 // CREATE electricity bill
-router.post('/', async (req, res) => {
+router.post('/', createElectricityValidator, validate, async (req, res, next) => {
   try {
-    console.log('Received electricity data:', req.body);
     // Auto-calculate consumption if not provided
     if (!req.body.consumption && req.body.currentReading && req.body.previousReading) {
       req.body.consumption = req.body.currentReading - req.body.previousReading;
     }
-    
+
     // Check consumption alert
     if (req.body.alertThreshold && req.body.consumption > req.body.alertThreshold) {
       req.body.consumptionAlert = true;
     }
-    
+
     const bill = new Electricity(req.body);
-    console.log('Saving electricity bill to database...');
     await bill.save();
-    console.log('Electricity bill saved successfully:', bill);
-    res.status(201).json(bill);
+    res.status(201).json({
+      success: true,
+      message: 'Electricity bill created successfully',
+      data: bill
+    });
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    next(error);
   }
 });
 
 // UPDATE electricity bill
-router.put('/:id', async (req, res) => {
+router.put('/:id', updateElectricityValidator, validate, async (req, res, next) => {
   try {
-    console.log('Update request received for ID:', req.params.id);
-    console.log('Update data:', req.body);
-
     // Auto-calculate consumption if readings are updated
     if (req.body.currentReading && req.body.previousReading) {
       req.body.consumption = req.body.currentReading - req.body.previousReading;
     }
-    
+
     // Check consumption alert
     if (req.body.alertThreshold && req.body.consumption > req.body.alertThreshold) {
       req.body.consumptionAlert = true;
     } else {
       req.body.consumptionAlert = false;
     }
-    
-    // Ensure we have a valid MongoDB ID
-    if (!req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
-      return res.status(400).json({ error: 'Invalid ID format' });
-    }
 
     const bill = await Electricity.findByIdAndUpdate(
-      req.params.id, 
-      req.body, 
+      req.params.id,
+      req.body,
       { new: true, runValidators: true }
     );
 
-    if (!bill) return res.status(404).json({ error: 'Electricity bill not found' });
-    
-    console.log('Update successful:', bill);
-    res.json(bill);
-  } catch (error) {
-    console.error('Update error:', error);
-    res.status(400).json({ 
-      error: error.message,
-      type: error.name,
-      details: error.stack
+    if (!bill) {
+      return next(new AppError('Electricity bill not found', 404));
+    }
+
+    res.json({
+      success: true,
+      message: 'Electricity bill updated successfully',
+      data: bill
     });
+  } catch (error) {
+    next(error);
   }
 });
 
 // DELETE electricity bill
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', deleteElectricityValidator, validate, async (req, res, next) => {
   try {
     const bill = await Electricity.findByIdAndDelete(req.params.id);
-    if (!bill) return res.status(404).json({ error: 'Electricity bill not found' });
-    res.json({ message: 'Electricity bill deleted successfully', id: req.params.id });
+    if (!bill) {
+      return next(new AppError('Electricity bill not found', 404));
+    }
+    res.json({
+      success: true,
+      message: 'Electricity bill deleted successfully',
+      data: { id: req.params.id }
+    });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    next(error);
   }
 });
 
 // GET count
-router.get('/count/total', async (req, res) => {
+router.get('/count/total', async (req, res, next) => {
   try {
     const count = await Electricity.countDocuments();
-    res.json({ count });
+    res.json({
+      success: true,
+      count
+    });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    next(error);
   }
 });
 
