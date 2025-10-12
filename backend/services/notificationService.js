@@ -56,9 +56,11 @@ class NotificationService {
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   }
 
-  // Check if item needs notification (10 days before expiration)
+  // Check if item needs notification (daily from N days before until expiration)
   shouldNotify(daysUntil) {
     const threshold = parseInt(process.env.NOTIFICATION_DAYS_BEFORE) || 10;
+    // Send notification every day from threshold days before until expiration day (0)
+    // Example: If threshold=10, notify when daysUntil is 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, or 0
     return daysUntil !== null && daysUntil <= threshold && daysUntil >= 0;
   }
 
@@ -163,12 +165,17 @@ class NotificationService {
   async sendPushNotification(notification) {
     try {
       const subscriptions = await PushSubscription.find({});
-      
+      console.log(`📤 Found ${subscriptions.length} push subscription(s)`);
+
+      if (subscriptions.length === 0) {
+        console.log('⚠️ No push subscriptions found - nobody subscribed yet');
+        return { success: true, sent: 0, total: 0 };
+      }
+
       const payload = JSON.stringify({
         title: notification.title,
         body: notification.message,
-        icon: '/logo.png',
-        badge: '/badge.png',
+        tag: `gts-${notification.type}-${Date.now()}`,
         data: {
           type: notification.type,
           subType: notification.subType,
@@ -177,27 +184,36 @@ class NotificationService {
         }
       });
 
+      console.log(`📨 Sending notification: ${notification.title}`);
+
       const results = await Promise.allSettled(
         subscriptions.map(async (sub) => {
           try {
-            await webpush.sendNotification(
+            console.log(`  → Sending to: ${sub.userEmail} (${sub.endpoint.substring(0, 50)}...)`);
+
+            const response = await webpush.sendNotification(
               {
                 endpoint: sub.endpoint,
                 keys: sub.keys
               },
               payload
             );
-            
+
+            console.log(`  ✅ Sent successfully to ${sub.userEmail}`);
+
             // Update lastUsed
             sub.lastUsed = new Date();
             await sub.save();
-            
-            return { success: true, endpoint: sub.endpoint };
+
+            return { success: true, endpoint: sub.endpoint, response };
           } catch (error) {
+            console.error(`  ❌ Failed to send to ${sub.userEmail}:`, error.message);
+            console.error(`     Status: ${error.statusCode}, Body: ${error.body}`);
+
             // If subscription is invalid, delete it
             if (error.statusCode === 410 || error.statusCode === 404) {
               await PushSubscription.deleteOne({ _id: sub._id });
-              console.log('Removed invalid subscription:', sub.endpoint);
+              console.log(`  🗑️ Removed invalid subscription for ${sub.userEmail}`);
             }
             throw error;
           }
@@ -205,11 +221,13 @@ class NotificationService {
       );
 
       const successful = results.filter(r => r.status === 'fulfilled').length;
-      console.log(`✅ Push notifications sent: ${successful}/${subscriptions.length}`);
-      
-      return { success: true, sent: successful, total: subscriptions.length };
+      const failed = results.filter(r => r.status === 'rejected').length;
+
+      console.log(`✅ Push notifications: ${successful} sent, ${failed} failed (total: ${subscriptions.length})`);
+
+      return { success: true, sent: successful, failed, total: subscriptions.length };
     } catch (error) {
-      console.error('Error sending push notifications:', error);
+      console.error('❌ Error in sendPushNotification:', error);
       return { success: false, error: error.message };
     }
   }
@@ -278,54 +296,186 @@ class NotificationService {
     }
   }
 
-  // Send all notifications (push + email)
-  async sendAllNotifications() {
-    console.log('\n🔔 Checking for items needing notifications...');
-    
-    const notifications = await this.getItemsNeedingNotification();
-    
-    if (notifications.length === 0) {
-      console.log('✅ No notifications needed at this time');
-      return { total: 0, sent: 0 };
-    }
-
-    console.log(`📨 Found ${notifications.length} items needing notification`);
-
-    let sentCount = 0;
-
-    for (const notification of notifications) {
-      // Send push notification
-      await this.sendPushNotification(notification);
-
-      // Get all subscribers' emails
-      const subscriptions = await PushSubscription.find({});
-      const emails = [...new Set(subscriptions.map(sub => sub.userEmail))];
-
-      if (emails.length > 0) {
-        await this.sendEmailNotification(notification, emails);
+  // Send grouped email notifications (all items of same type in one email)
+  async sendGroupedEmailNotification(notifications, type, emails) {
+    try {
+      if (!transporter) {
+        return { success: false, skipped: true, reason: 'Email not configured' };
       }
 
-      sentCount++;
-    }
+      const typeTitles = {
+        vehicle: '🚗 Vehicle Alerts',
+        homeRent: '🏠 Home Rent Alerts',
+        electricity: '⚡ Electricity Bill Alerts'
+      };
+      const typeTitle = typeTitles[type] || 'Alerts';
 
-    console.log(`✅ Sent ${sentCount} notifications`);
-    return { total: notifications.length, sent: sentCount };
+      // Generate alert items HTML
+      const alertItems = notifications.map(notif => `
+        <div class="alert">
+          <strong>${notif.title}</strong><br>
+          ${notif.message}<br>
+          <small><strong>Days Remaining:</strong> ${notif.daysUntil} days</small>
+        </div>
+      `).join('');
+
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: #2563eb; color: white; padding: 20px; text-align: center; }
+            .content { background: #f9fafb; padding: 20px; margin: 20px 0; border-radius: 5px; }
+            .alert { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 15px 0; }
+            .footer { text-align: center; color: #6b7280; font-size: 12px; margin-top: 20px; }
+            .button { display: inline-block; background: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-top: 10px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>GTS Dashboard Alert</h1>
+            </div>
+            <div class="content">
+              <h2>${typeTitle}</h2>
+              <p>You have ${notifications.length} alert(s) requiring attention:</p>
+              ${alertItems}
+              <p>Please take necessary action before the expiration dates.</p>
+              <a href="${process.env.APP_URL || 'http://localhost:5173'}" class="button">
+                View Dashboard
+              </a>
+            </div>
+            <div class="footer">
+              <p>This is an automated notification from GTS Dashboard</p>
+              <p>Do not reply to this email</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+
+      const mailOptions = {
+        from: process.env.EMAIL_FROM,
+        to: emails.join(', '),
+        subject: typeTitle,
+        html: htmlContent,
+        text: notifications.map(n => n.message).join('\n\n')
+      };
+
+      const info = await transporter.sendMail(mailOptions);
+      console.log(`✅ Grouped ${type} email sent:`, info.messageId);
+      return { success: true, messageId: info.messageId };
+    } catch (error) {
+      console.error(`❌ Error sending grouped ${type} email:`, error);
+      return { success: false, error: error.message };
+    }
   }
 
-  // Manual trigger for testing
+  // Send all notifications (push + email) - SEPARATED
+  async sendAllNotifications() {
+    console.log('\n🔔 Checking for items needing notifications...');
+    console.log(`📅 Current date: ${new Date().toLocaleDateString()}`);
+    console.log(`⏰ Notification threshold: ${process.env.NOTIFICATION_DAYS_BEFORE || 10} days before expiration`);
+
+    const notifications = await this.getItemsNeedingNotification();
+
+    if (notifications.length === 0) {
+      console.log('✅ No notifications needed at this time');
+      return { total: 0, sent: 0, push: 0, email: 0 };
+    }
+
+    console.log(`📨 Found ${notifications.length} items needing notification:`);
+
+    // Log each notification item
+    notifications.forEach((notif, index) => {
+      console.log(`   ${index + 1}. ${notif.title} - ${notif.daysUntil} days remaining`);
+    });
+
+    // Group notifications by type (for emails)
+    const groupedNotifications = {
+      vehicle: notifications.filter(n => n.type === 'vehicle'),
+      homeRent: notifications.filter(n => n.type === 'homeRent'),
+      electricity: notifications.filter(n => n.type === 'electricity')
+    };
+
+    let pushSent = 0;
+    let emailSent = 0;
+
+    // ========== PUSH NOTIFICATIONS (Browser notifications ONLY) ==========
+    console.log('\n📱 Sending Windows Push Notifications...');
+    for (const notification of notifications) {
+      console.log(`\n📤 Processing push: ${notification.title} (${notification.daysUntil} days until expiration)`);
+      const pushResult = await this.sendPushNotification(notification);
+      if (pushResult.success) pushSent++;
+    }
+
+    // ========== EMAIL NOTIFICATIONS (Uses same PushSubscription data) ==========
+    // Get unique emails from PushSubscription collection
+    const pushSubscriptions = await PushSubscription.find({});
+    const uniqueEmails = [...new Set(pushSubscriptions.map(sub => sub.userEmail))];
+
+    if (uniqueEmails.length > 0) {
+      console.log(`\n📧 Sending Email Notifications to ${uniqueEmails.length} email address(es)...`);
+
+      // Send grouped emails by type
+      if (groupedNotifications.vehicle.length > 0) {
+        console.log(`\n📧 Sending grouped vehicle email (${groupedNotifications.vehicle.length} items)`);
+        const result = await this.sendGroupedEmailNotification(groupedNotifications.vehicle, 'vehicle', uniqueEmails);
+        if (result.success) emailSent++;
+      }
+
+      if (groupedNotifications.homeRent.length > 0) {
+        console.log(`\n📧 Sending grouped home rent email (${groupedNotifications.homeRent.length} items)`);
+        const result = await this.sendGroupedEmailNotification(groupedNotifications.homeRent, 'homeRent', uniqueEmails);
+        if (result.success) emailSent++;
+      }
+
+      if (groupedNotifications.electricity.length > 0) {
+        console.log(`\n📧 Sending grouped electricity email (${groupedNotifications.electricity.length} items)`);
+        const result = await this.sendGroupedEmailNotification(groupedNotifications.electricity, 'electricity', uniqueEmails);
+        if (result.success) emailSent++;
+      }
+    } else {
+      console.log('\nℹ️ No email subscribers found (no push subscriptions with emails)');
+    }
+
+    console.log(`\n✅ Daily notification check complete:`);
+    console.log(`   📱 Push notifications: ${pushSent} sent`);
+    console.log(`   📧 Email notifications: ${emailSent} sent`);
+    console.log(`📆 Next check: Tomorrow at 9:00 AM\n`);
+    return { total: notifications.length, sent: pushSent + emailSent, push: pushSent, email: emailSent };
+  }
+
+  // Manual trigger for testing (email only)
   async sendTestNotification(email) {
     const testNotification = {
-      title: '🧪 Test Notification',
-      message: 'This is a test notification from GTS Dashboard',
+      title: '🧪 Test Email Notification',
+      message: 'This is a test email notification from GTS Dashboard',
+      type: 'test',
+      subType: 'test',
+      daysUntil: 10
+    };
+
+    await this.sendEmailNotification(testNotification, [email]);
+
+    return { success: true, message: 'Test email sent' };
+  }
+
+  // Manual trigger for testing push notifications (no email)
+  async sendTestPushNotification() {
+    const testNotification = {
+      title: '🧪 Test Push Notification',
+      message: 'This is a test Windows push notification from GTS Dashboard',
       type: 'test',
       subType: 'test',
       daysUntil: 10
     };
 
     await this.sendPushNotification(testNotification);
-    await this.sendEmailNotification(testNotification, [email]);
 
-    return { success: true, message: 'Test notification sent' };
+    return { success: true, message: 'Test push notification sent' };
   }
 }
 

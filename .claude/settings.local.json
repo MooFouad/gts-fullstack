@@ -2,7 +2,19 @@
   "permissions": {
     "allow": [
       "Bash(find:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(npm start)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(taskkill:*)",
+      "Bash(timeout:*)",
+      "Bash(npm run dev)",
+      "Bash(curl http://localhost:5000/api/notifications/email/subscriptions)",
+      "Bash(curl http://localhost:5000/api/health)",
+      "Bash(curl http://localhost:5000/api/notifications/subscriptions)",
+      "Bash(tasklist:*)",
+      "Bash(mongosh:*)",
+      "Bash(git rm:*)"
     ],
     "deny": [],
     "ask": []

@@ -94,21 +94,34 @@ router.get('/vapid-public-key', (req, res) => {
   res.json({ publicKey });
 });
 
-// Manual trigger (for testing)
+// Manual trigger for testing EMAIL notifications
 router.post('/test', async (req, res) => {
   try {
     const { email } = req.body;
-    
+
     if (!email) {
       return res.status(400).json({ error: 'Email is required' });
     }
 
-    console.log('🧪 Sending test notification to:', email);
+    console.log('🧪 Sending test EMAIL to:', email);
     await notificationService.sendTestNotification(email);
-    
-    res.json({ success: true, message: 'Test notification sent' });
+
+    res.json({ success: true, message: 'Test email sent' });
   } catch (error) {
-    console.error('Error sending test notification:', error);
+    console.error('Error sending test email:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Manual trigger for testing PUSH notifications (browser only, no email)
+router.post('/test-push', async (req, res) => {
+  try {
+    console.log('🧪 Sending test PUSH notification');
+    await notificationService.sendTestPushNotification();
+
+    res.json({ success: true, message: 'Test push notification sent to all subscribed browsers' });
+  } catch (error) {
+    console.error('Error sending test push:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -129,9 +142,9 @@ router.post('/check-now', async (req, res) => {
 router.get('/subscriptions', async (req, res) => {
   try {
     const subscriptions = await PushSubscription.find({}).select('-keys');
-    res.json({ 
+    res.json({
       count: subscriptions.length,
-      subscriptions 
+      subscriptions
     });
   } catch (error) {
     console.error('Error fetching subscriptions:', error);

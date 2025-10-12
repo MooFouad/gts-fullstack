@@ -52,25 +52,42 @@ class ApiService {
 
   async request(endpoint, options = {}, retryCount = 0) {
     try {
-      const response = await fetch(`${this.baseURL}${endpoint}`, {
-        ...options,
-        headers: {
-          'Content-Type': 'application/json',
-          ...options.headers,
-        },
-        signal: AbortSignal.timeout(15000)
-      });
+      // Create abort controller for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      try {
+        const response = await fetch(`${this.baseURL}${endpoint}`, {
+          ...options,
+          headers: {
+            'Content-Type': 'application/json',
+            ...options.headers,
+          },
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data;
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        throw fetchError;
+      }
+    } catch (error) {
+      console.error(`API Error (attempt ${retryCount + 1}/${MAX_RETRIES}):`, error);
+
+      // Check if it's a network error or abort
+      if (error.name === 'AbortError') {
+        console.error('Request timed out after 15 seconds');
       }
 
-      const data = await response.json();
-      return data;
-    } catch (error) {
-      console.error(`API Error (attempt ${retryCount + 1}):`, error);
-
-      if (retryCount < MAX_RETRIES) {
+      if (retryCount < MAX_RETRIES - 1) {
+        console.log(`Retrying in ${RETRY_DELAY}ms...`);
         await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
         return this.request(endpoint, options, retryCount + 1);
       }

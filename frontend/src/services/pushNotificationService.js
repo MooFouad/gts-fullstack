@@ -140,10 +140,10 @@ class PushNotificationService {
     }
   }
 
-  // Subscribe to push notifications
-  async subscribe(email, retryCount = 0) {
+  // Subscribe to push notifications (email is optional - for backward compatibility)
+  async subscribe(email = null, retryCount = 0) {
     try {
-      console.log('🔔 Starting subscription process...');
+      console.log('🔔 Starting push subscription process...');
 
       // Step 1: Check browser support
       if (!this.isSupported()) {
@@ -229,14 +229,16 @@ class PushNotificationService {
       console.log('Sending subscription to server...');
       const serverResponse = await api.post('/notifications/subscribe', {
         subscription: this.subscription.toJSON(),
-        email
+        email: email || 'anonymous'
       });
 
       console.log('✅ Step 8: Subscription saved to server:', serverResponse);
 
-      // Step 10: Save email to localStorage
-      localStorage.setItem('gts_notification_email', email);
-      console.log('✅ Step 9: Email saved to localStorage');
+      // Step 10: Save email to localStorage (if provided)
+      if (email) {
+        localStorage.setItem('gts_notification_email', email);
+        console.log('✅ Step 9: Email saved to localStorage');
+      }
 
       // Step 11: Verify subscription
       const verifySubscription = await swRegistration.pushManager.getSubscription();
@@ -309,15 +311,15 @@ class PushNotificationService {
     }
   }
 
-  // Send test notification
-  async sendTestNotification(email) {
+  // Send test PUSH notification (browser only, no email)
+  async sendTestNotification() {
     try {
-      console.log('Sending test notification to:', email);
-      await api.post('/notifications/test', { email });
-      console.log('✅ Test notification sent');
+      console.log('Sending test PUSH notification...');
+      await api.post('/notifications/test-push');
+      console.log('✅ Test push notification sent');
       return true;
     } catch (error) {
-      console.error('Error sending test notification:', error);
+      console.error('Error sending test push notification:', error);
       throw error;
     }
   }

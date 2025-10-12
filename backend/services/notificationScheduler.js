@@ -7,21 +7,29 @@ class NotificationScheduler {
     const hour = process.env.NOTIFICATION_CHECK_HOUR || 9;
     const cronExpression = `0 ${hour} * * *`;
 
-    console.log(`📅 Notification scheduler started (runs daily at ${hour}:00 AM)`);
+    console.log(`\n${'='.repeat(60)}`);
+    console.log(`📅 NOTIFICATION SCHEDULER ACTIVATED`);
+    console.log(`${'='.repeat(60)}`);
+    console.log(`⏰ Schedule: Daily at ${hour}:00 AM`);
+    console.log(`📧 Notifications: Email + Windows Push`);
+    console.log(`📆 Frequency: Every day from 10 days before until expiration`);
+    console.log(`${'='.repeat(60)}\n`);
 
     // Schedule daily check
     cron.schedule(cronExpression, async () => {
-      console.log('\n⏰ Running scheduled notification check...');
+      console.log('\n⏰ ========== SCHEDULED NOTIFICATION CHECK ==========');
+      console.log(`Time: ${new Date().toLocaleString()}`);
       try {
         await notificationService.sendAllNotifications();
       } catch (error) {
         console.error('❌ Error in scheduled notification check:', error);
       }
+      console.log('========== NOTIFICATION CHECK COMPLETE ==========\n');
     });
 
     // Optional: Run immediately on startup (for testing)
     if (process.env.NODE_ENV === 'development') {
-      console.log('🧪 Running initial notification check (dev mode)...');
+      console.log('🧪 DEV MODE: Running initial notification check in 5 seconds...\n');
       setTimeout(() => {
         notificationService.sendAllNotifications();
       }, 5000);

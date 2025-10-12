@@ -13,6 +13,9 @@ validateEnv();
 // Error handlers
 const { errorHandler, handleUnhandledRejection, handleUncaughtException } = require('./middleware/errorHandler');
 
+// Notification scheduler
+const notificationScheduler = require('./services/notificationScheduler');
+
 // Handle uncaught exceptions
 process.on('uncaughtException', handleUncaughtException);
 
@@ -119,6 +122,9 @@ const startServer = async () => {
       console.log(`🚗 Vehicles: http://localhost:${PORT}/api/vehicles`);
       console.log(`🏠 Home Rents: http://localhost:${PORT}/api/home-rents`);
       console.log(`⚡ Electricity: http://localhost:${PORT}/api/electricity`);
+
+      // Start notification scheduler
+      notificationScheduler.start();
     });
     
     server.on('error', (err) => {
