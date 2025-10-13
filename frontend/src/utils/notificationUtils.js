@@ -68,8 +68,8 @@ export const sendExpiryNotification = (item, type) => {
     if (title && body) {
         new Notification(title, {
             body,
-            icon: '/notification-icon.png', // يمكنك إضافة أيقونة خاصة بك
-            badge: '/notification-badge.png',
+            icon: '/logo.svg',
+            badge: '/logo.svg',
             dir: 'rtl',
             lang: 'ar'
         });

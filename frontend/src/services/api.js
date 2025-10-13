@@ -3,6 +3,11 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000;
 
+// Get auth token
+const getAuthToken = () => {
+  return localStorage.getItem('token');
+};
+
 // Function to test server availability
 const testServerConnection = async (port) => {
   try {
@@ -11,8 +16,7 @@ const testServerConnection = async (port) => {
       return port;
     }
   } catch (error) {
-    console.log(`Port ${port} not responding, trying next...`);
-    console.log(error)
+    console.log(`Port ${port} not responding`);
   }
   return null;
 };
@@ -40,10 +44,10 @@ const initializeApi = async () => {
       console.log('Connected to server at:', url);
     } catch (error) {
       console.error('Server connection error:', error);
-      apiBaseUrl = API_BASE_URL; // Fallback to default
+      apiBaseUrl = API_BASE_URL;
     }
   }
-}
+};
 
 class ApiService {
   constructor(baseURL) {
@@ -52,24 +56,40 @@ class ApiService {
 
   async request(endpoint, options = {}, retryCount = 0) {
     try {
-      // Create abort controller for timeout
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+      // Add auth token to headers
+      const token = getAuthToken();
+      const headers = {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      };
+
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
 
       try {
         const response = await fetch(`${this.baseURL}${endpoint}`, {
           ...options,
-          headers: {
-            'Content-Type': 'application/json',
-            ...options.headers,
-          },
+          headers,
           signal: controller.signal
         });
 
         clearTimeout(timeoutId);
 
+        // Handle 401 Unauthorized
+        if (response.status === 401) {
+          localStorage.removeItem('token');
+          // Trigger a custom event that AuthContext can listen to
+          window.dispatchEvent(new CustomEvent('auth:unauthorized'));
+          throw new Error('Session expired. Please login again.');
+        }
+
         if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
         }
 
         const data = await response.json();
@@ -81,9 +101,13 @@ class ApiService {
     } catch (error) {
       console.error(`API Error (attempt ${retryCount + 1}/${MAX_RETRIES}):`, error);
 
-      // Check if it's a network error or abort
       if (error.name === 'AbortError') {
         console.error('Request timed out after 15 seconds');
+      }
+
+      // Don't retry on 401 errors
+      if (error.message.includes('Session expired')) {
+        throw error;
       }
 
       if (retryCount < MAX_RETRIES - 1) {

@@ -75,12 +75,11 @@ const NotificationSettings = () => {
 
       addDebugLog('✅ Subscribe method completed');
 
-      // Save email to localStorage
-      localStorage.setItem('gts_notification_email', email);
-
-      setIsSubscribed(true);
       setMessage('✅ Successfully subscribed! You will receive both browser push and email notifications at 9 AM daily.');
       addDebugLog('✅ Subscription complete!');
+
+      // Clear email input for next subscription
+      setEmail('');
 
       const isNowSubscribed = await pushNotificationService.isSubscribed();
       addDebugLog(`Verification result: ${isNowSubscribed ? '✅ Confirmed' : '❌ Not found'}`);
@@ -90,6 +89,9 @@ const NotificationSettings = () => {
       }
 
       await loadSubscriptions();
+
+      // Reset subscription state to allow adding more emails
+      setIsSubscribed(false);
 
     } catch (error) {
       console.error('❌ Subscription error:', error);

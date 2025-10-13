@@ -14,7 +14,14 @@
       "Bash(curl http://localhost:5000/api/notifications/subscriptions)",
       "Bash(tasklist:*)",
       "Bash(mongosh:*)",
-      "Bash(git rm:*)"
+      "Bash(git rm:*)",
+      "Bash(curl -X POST http://localhost:5000/api/notifications/test -H \"Content-Type: application/json\" -d \"{\"\"email\"\":\"\"mofouad001@gmail.com\"\"}\")",
+      "Bash(curl:*)",
+      "Bash(npm run backup:list:*)",
+      "Bash(dir:*)",
+      "Bash(npm install:*)",
+      "Bash(del \"c:\\web\\GTS\\New folder\\fullstack\\frontend\\convert-logo.js\")",
+      "Bash(npm uninstall:*)"
     ],
     "deny": [],
     "ask": []

@@ -44,6 +44,11 @@ nul
 *.sqlite
 *.db
 
+# Database backups
+backend/backups/backup-*
+backend/backups/*.json
+!backend/backups/.gitkeep
+
 # Uploaded files (if any)
 uploads/
 
