@@ -13,7 +13,7 @@ const HomeRentsContainer = () => {
   const [deleteDialog, setDeleteDialog] = useState({ isOpen: false, id: null });
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
-  const { data: items, addItem, updateItem, deleteItem, loading, error } = useDataManagement('homeRent');
+  const { data: items, addItem, updateItem, deleteItem, loading, error, refreshData } = useDataManagement('homeRent');
 
   const filteredItems = items.filter((item) => {
     // Search filter
@@ -70,6 +70,8 @@ const HomeRentsContainer = () => {
         await addItem(formData);
       }
       setFormDialog({ isOpen: false, data: null });
+      // Refresh data to ensure UI is updated
+      await refreshData();
     } catch (err) {
       console.error('Form submission error:', err);
       alert(`Error: ${err.message || 'Failed to save changes. Please try again.'}`);
@@ -86,6 +88,8 @@ const HomeRentsContainer = () => {
       try {
         await deleteItem(deleteDialog.id);
         setDeleteDialog({ isOpen: false, id: null });
+        // Refresh data to ensure UI is updated
+        await refreshData();
       } catch (error) {
         console.error('Delete failed:', error);
         alert('Failed to delete item. Please try again.');

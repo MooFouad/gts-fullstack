@@ -1,13 +1,19 @@
 export const getExpiryStatus = (dateString) => {
+      // إذا كان التاريخ غير موجود، نرجع 'valid' عشان ما يظهرش أحمر
+      if (!dateString) return 'valid';
+
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      
+
       const expiryDate = new Date(dateString);
       expiryDate.setHours(0, 0, 0, 0);
-      
+
+      // تحقق إذا كان التاريخ صحيح
+      if (isNaN(expiryDate.getTime())) return 'valid';
+
       const diffTime = expiryDate - today;
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      
+
       if (diffDays < 0) return 'expired';
       if (diffDays <= 10) return 'warning';
       return 'valid';
@@ -63,9 +69,10 @@ export const formatDate = (dateString) => {
 export const calculateRemainingDays = (dateString) => {
   const date = parseDate(dateString);
   if (!date) return null;
-  
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const diffTime = date.getTime() - today.getTime();
   return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 };
+

@@ -158,23 +158,48 @@ router.post('/vehicles', upload.single('file'), async (req, res) => {
       
       try {
         const vehicleData = {
-          plateNumber: cleanValue(row['Plate Number'] || row['plateNumber'] || `PLATE-${i + 1}`),
-          plateType: cleanValue(row['Plate Type'] || row['plateType'] || 'Private'),
-          vehicleMaker: cleanValue(row['Maker'] || row['vehicleMaker'] || row['Brand'] || 'Unknown'),
-          vehicleModel: cleanValue(row['Model'] || row['vehicleModel'] || 'Unknown'),
-          modelYear: parseInt(row['Year'] || row['modelYear'] || new Date().getFullYear()),
-          sequenceNumber: cleanValue(row['Sequence'] || row['sequenceNumber'] || ''),
-          chassisNumber: cleanValue(row['Chassis'] || row['chassisNumber'] || `CHASSIS-${i + 1}`),
-          licenseExpiryDate: parseExcelDate(row['License Expiry'] || row['licenseExpiryDate']) || new Date().toISOString().split('T')[0],
-          inspectionExpiryDate: parseExcelDate(row['Inspection Expiry'] || row['inspectionExpiryDate']) || new Date().toISOString().split('T')[0],
-          actualDriverId: cleanValue(row['Driver ID'] || row['actualDriverId'] || ''),
-          actualDriverName: cleanValue(row['Driver Name'] || row['actualDriverName'] || ''),
-          mvpiStatus: cleanValue(row['MVPI Status'] || row['mvpiStatus'] || 'Active'),
-          insuranceStatus: cleanValue(row['Insurance'] || row['insuranceStatus'] || 'Valid'),
-          restrictionStatus: cleanValue(row['Restriction'] || row['restrictionStatus'] || 'None'),
-          istemarahIssueDate: parseExcelDate(row['Istemarah Date'] || row['istemarahIssueDate']) || '',
-          vehicleStatus: cleanValue(row['Status'] || row['vehicleStatus'] || 'Active'),
-          bodyType: cleanValue(row['Body Type'] || row['bodyType'] || ''),
+          // 1. Plate Number
+          plateNumber: cleanValue(row['Plate Number'] || row['plateNumber'] || row['رقم اللوحة'] || `PLATE-${i + 1}`),
+
+          // 2. Registration Type
+          registrationType: cleanValue(row['Registration Type'] || row['registrationType'] || row['نوع التسجيل'] || ''),
+
+          // 3. Brand
+          vehicleMaker: cleanValue(row['Brand'] || row['Maker'] || row['vehicleMaker'] || row['العلامة التجارية'] || row['الشركة المصنعة'] || 'Unknown'),
+
+          // 4. Model
+          vehicleModel: cleanValue(row['Model'] || row['vehicleModel'] || row['الموديل'] || 'Unknown'),
+
+          // 5. Year of Manufacture
+          modelYear: parseInt(row['Year of Manufacture'] || row['Year'] || row['modelYear'] || row['سنة التصنيع'] || row['سنة الصنع'] || new Date().getFullYear()),
+
+          // 6. Serial Number
+          sequenceNumber: cleanValue(row['Serial Number'] || row['Sequence'] || row['sequenceNumber'] || row['الرقم التسلسلي'] || ''),
+
+          // 7. Chassis Number
+          chassisNumber: cleanValue(row['Chassis Number'] || row['Chassis'] || row['chassisNumber'] || row['رقم الشاسيه'] || `CHASSIS-${i + 1}`),
+
+          // 8. Basic Color
+          basicColor: cleanValue(row['Basic Color'] || row['basicColor'] || row['Color'] || row['اللون الأساسي'] || ''),
+
+          // 9. License Expiry Date
+          licenseExpiryDate: parseExcelDate(row['License Expiry Date'] || row['License Expiry'] || row['licenseExpiryDate'] || row['تاريخ انتهاء الرخصة']) || new Date().toISOString().split('T')[0],
+
+          // 10. Inspection Expiry Date
+          inspectionExpiryDate: parseExcelDate(row['Inspection Expiry Date'] || row['Inspection Expiry'] || row['inspectionExpiryDate'] || row['تاريخ انتهاء الفحص']) || new Date().toISOString().split('T')[0],
+
+          // 11. Actual User ID Number
+          actualDriverId: cleanValue(row['Actual User ID Number'] || row['Actual User ID'] || row['Driver ID'] || row['actualDriverId'] || row['رقم هوية المستخدم الفعلي'] || ''),
+
+          // 12. Actual User Name
+          actualDriverName: cleanValue(row['Actual User Name'] || row['Driver Name'] || row['actualDriverName'] || row['اسم المستخدم الفعلي'] || ''),
+
+          // 13. Inspection Status
+          inspectionStatus: cleanValue(row['Inspection Status'] || row['inspectionStatus'] || row['حالة الفحص'] || 'Valid'),
+
+          // 14. Insurance Status
+          insuranceStatus: cleanValue(row['Insurance Status'] || row['Insurance'] || row['insuranceStatus'] || row['حالة التأمين'] || 'Valid'),
+
           attachments: []
         };
 

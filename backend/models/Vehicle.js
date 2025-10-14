@@ -1,47 +1,58 @@
 const mongoose = require('mongoose');
 
 const vehicleSchema = new mongoose.Schema({
-  plateNumber: { type: String, required: true },
-  plateType: { type: String },
+  // 1. Plate Number (رقم اللوحة)
+  plateNumber: { type: String },
+
+  // 2. Registration Type (نوع التسجيل)
+  registrationType: { type: String },
+
+  // 3. Brand (العلامة التجارية / الشركة المصنعة)
   vehicleMaker: { type: String },
+
+  // 4. Model (الموديل)
   vehicleModel: { type: String },
+
+  // 5. Year of Manufacture (سنة التصنيع)
   modelYear: { type: Number },
+
+  // 6. Serial Number (الرقم التسلسلي)
   sequenceNumber: { type: String },
+
+  // 7. Chassis Number (رقم الشاسيه)
   chassisNumber: { type: String },
-  licenseExpiryDate: { 
+
+  // 8. Basic Color (اللون الأساسي)
+  basicColor: { type: String },
+
+  // 9. License Expiry Date (تاريخ انتهاء الرخصة)
+  licenseExpiryDate: {
     type: Date,
-    set: v => v ? new Date(v) : null 
+    set: v => v ? new Date(v) : null
   },
-  inspectionExpiryDate: { 
+
+  // 10. Inspection Expiry Date (تاريخ انتهاء الفحص)
+  inspectionExpiryDate: {
     type: Date,
-    set: v => v ? new Date(v) : null 
+    set: v => v ? new Date(v) : null
   },
+
+  // 11. Actual User ID Number (رقم هوية المستخدم الفعلي)
   actualDriverId: { type: String },
+
+  // 12. Actual User Name (اسم المستخدم الفعلي)
   actualDriverName: { type: String },
-  mvpiStatus: { 
-    type: String,
-    enum: ['Active', 'Expired', 'Warning'],
-    default: 'Active'
-  },
-  insuranceStatus: { 
-    type: String,
-    enum: ['Valid', 'Invalid', 'Expired'],
-    default: 'Valid'
-  },
-  restrictionStatus: { type: String },
-  istemarahIssueDate: { 
-    type: Date,
-    set: v => v ? new Date(v) : null 
-  },
-  vehicleStatus: { 
-    type: String,
-    enum: ['Active', 'Inactive', 'Maintenance'],
-    default: 'Active'
-  },
-  bodyType: { type: String },
+
+  // 13. Inspection Status (حالة الفحص)
+  inspectionStatus: { type: String },
+
+  // 14. Insurance Status (حالة التأمين)
+  insuranceStatus: { type: String },
+
+  // Additional system fields
   attachments: [{ type: Object }],
   createdAt: { type: Date, default: Date.now }
-}, { 
+}, {
   timestamps: true,
   toJSON: { virtuals: true }
 });
@@ -63,9 +74,6 @@ vehicleSchema.pre('save', function(next) {
   }
   if (this.inspectionExpiryDate && isNaN(this.inspectionExpiryDate.getTime())) {
     this.inspectionExpiryDate = null;
-  }
-  if (this.istemarahIssueDate && isNaN(this.istemarahIssueDate.getTime())) {
-    this.istemarahIssueDate = null;
   }
   next();
 });

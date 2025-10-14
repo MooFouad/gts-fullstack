@@ -63,22 +63,35 @@ export const generateVehicleTemplate = () => {
   const templateData = [
     {
       'Plate Number': 'ABC1234',
-      'Plate Type': 'Private',
-      'Vehicle Maker': 'Toyota',
-      'Vehicle Model': 'Camry',
-      'Model Year': 2023,
-      'Sequence Number': 'SEQ001',
+      'Registration Type': 'Private',
+      'Brand': 'Toyota',
+      'Model': 'Camry',
+      'Year of Manufacture': 2023,
+      'Serial Number': 'SEQ001',
       'Chassis Number': 'CHASSIS123456',
+      'Basic Color': 'White',
       'License Expiry Date': '2025-12-31',
       'Inspection Expiry Date': '2025-06-30',
-      'Actual Driver ID': 'DRV001',
-      'Driver Name': 'John Doe',
-      'MVPI Status': 'Active',
-      'Insurance Status': 'Valid',
-      'Restriction Status': 'None',
-      'Istemarah Issue Date': '2024-01-01',
-      'Vehicle Status': 'Active',
-      'Body Type': 'Sedan'
+      'Actual User ID Number': '1234567890',
+      'Actual User Name': 'John Doe',
+      'Inspection Status': 'Valid',
+      'Insurance Status': 'Valid'
+    },
+    {
+      'Plate Number': 'XYZ5678',
+      'Registration Type': 'Commercial',
+      'Brand': 'Honda',
+      'Model': 'Accord',
+      'Year of Manufacture': 2024,
+      'Serial Number': 'SEQ002',
+      'Chassis Number': 'CHASSIS789012',
+      'Basic Color': 'Black',
+      'License Expiry Date': '2026-01-15',
+      'Inspection Expiry Date': '2025-07-20',
+      'Actual User ID Number': '0987654321',
+      'Actual User Name': 'Jane Smith',
+      'Inspection Status': 'Valid',
+      'Insurance Status': 'Valid'
     }
   ];
 
@@ -86,11 +99,20 @@ export const generateVehicleTemplate = () => {
   const ws = XLSX.utils.json_to_sheet(templateData);
 
   ws['!cols'] = [
-    { wch: 15 }, { wch: 12 }, { wch: 15 }, { wch: 15 },
-    { wch: 12 }, { wch: 15 }, { wch: 20 }, { wch: 18 },
-    { wch: 20 }, { wch: 15 }, { wch: 20 }, { wch: 12 },
-    { wch: 15 }, { wch: 15 }, { wch: 18 }, { wch: 15 },
-    { wch: 12 }
+    { wch: 15 }, // Plate Number
+    { wch: 18 }, // Registration Type
+    { wch: 15 }, // Brand
+    { wch: 15 }, // Model
+    { wch: 18 }, // Year of Manufacture
+    { wch: 15 }, // Serial Number
+    { wch: 20 }, // Chassis Number
+    { wch: 15 }, // Basic Color
+    { wch: 20 }, // License Expiry Date
+    { wch: 22 }, // Inspection Expiry Date
+    { wch: 22 }, // Actual User ID Number
+    { wch: 20 }, // Actual User Name
+    { wch: 18 }, // Inspection Status
+    { wch: 18 }  // Insurance Status
   ];
 
   XLSX.utils.book_append_sheet(wb, ws, 'Vehicles Template');

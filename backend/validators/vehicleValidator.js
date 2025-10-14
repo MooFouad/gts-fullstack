@@ -2,12 +2,17 @@ const { body, param } = require('express-validator');
 
 const createVehicleValidator = [
   body('plateNumber')
-    .notEmpty().withMessage('Plate number is required')
+    .optional()
+    .trim()
+    .escape(),
+
+  body('registrationType')
+    .optional()
     .trim()
     .escape(),
 
   body('vehicleMaker')
-    .notEmpty().withMessage('Vehicle maker is required')
+    .optional()
     .trim()
     .escape(),
 
@@ -16,34 +21,11 @@ const createVehicleValidator = [
     .trim()
     .escape(),
 
-  body('vehicleType')
+  body('modelYear')
     .optional()
-    .trim()
-    .escape(),
+    .isNumeric().withMessage('Model year must be a number'),
 
-  body('licenseExpiryDate')
-    .optional()
-    .isISO8601().withMessage('Invalid license expiry date format'),
-
-  body('insuranceExpiryDate')
-    .optional()
-    .isISO8601().withMessage('Invalid insurance expiry date format'),
-
-  body('insuranceValue')
-    .optional()
-    .isNumeric().withMessage('Insurance value must be a number'),
-
-  body('fuelType')
-    .optional()
-    .trim()
-    .escape(),
-
-  body('engineCapacity')
-    .optional()
-    .trim()
-    .escape(),
-
-  body('engineNumber')
+  body('sequenceNumber')
     .optional()
     .trim()
     .escape(),
@@ -53,26 +35,138 @@ const createVehicleValidator = [
     .trim()
     .escape(),
 
-  body('color')
+  body('basicColor')
     .optional()
     .trim()
     .escape(),
 
-  body('owner')
+  body('licenseExpiryDate')
+    .optional({ checkFalsy: true })
+    .custom((value) => {
+      if (!value) return true;
+      // Accept YYYY-MM-DD format
+      if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return true;
+      // Accept ISO8601 format
+      const date = new Date(value);
+      if (!isNaN(date.getTime())) return true;
+      throw new Error('Invalid license expiry date format');
+    }),
+
+  body('inspectionExpiryDate')
+    .optional({ checkFalsy: true })
+    .custom((value) => {
+      if (!value) return true;
+      // Accept YYYY-MM-DD format
+      if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return true;
+      // Accept ISO8601 format
+      const date = new Date(value);
+      if (!isNaN(date.getTime())) return true;
+      throw new Error('Invalid inspection expiry date format');
+    }),
+
+  body('actualDriverId')
     .optional()
     .trim()
     .escape(),
 
-  body('notes')
+  body('actualDriverName')
     .optional()
     .trim()
+    .escape(),
+
+  body('inspectionStatus')
+    .optional()
+    .trim()
+    .escape(),
+
+  body('insuranceStatus')
+    .optional()
+    .trim()
+    .escape()
 ];
 
 const updateVehicleValidator = [
   param('id')
     .isMongoId().withMessage('Invalid vehicle ID'),
 
-  ...createVehicleValidator
+  body('plateNumber')
+    .optional()
+    .trim()
+    .escape(),
+
+  body('registrationType')
+    .optional()
+    .trim()
+    .escape(),
+
+  body('vehicleMaker')
+    .optional()
+    .trim()
+    .escape(),
+
+  body('vehicleModel')
+    .optional()
+    .trim()
+    .escape(),
+
+  body('modelYear')
+    .optional()
+    .isNumeric().withMessage('Model year must be a number'),
+
+  body('sequenceNumber')
+    .optional()
+    .trim()
+    .escape(),
+
+  body('chassisNumber')
+    .optional()
+    .trim()
+    .escape(),
+
+  body('basicColor')
+    .optional()
+    .trim()
+    .escape(),
+
+  body('licenseExpiryDate')
+    .optional({ checkFalsy: true })
+    .custom((value) => {
+      if (!value) return true;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return true;
+      const date = new Date(value);
+      if (!isNaN(date.getTime())) return true;
+      throw new Error('Invalid license expiry date format');
+    }),
+
+  body('inspectionExpiryDate')
+    .optional({ checkFalsy: true })
+    .custom((value) => {
+      if (!value) return true;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return true;
+      const date = new Date(value);
+      if (!isNaN(date.getTime())) return true;
+      throw new Error('Invalid inspection expiry date format');
+    }),
+
+  body('actualDriverId')
+    .optional()
+    .trim()
+    .escape(),
+
+  body('actualDriverName')
+    .optional()
+    .trim()
+    .escape(),
+
+  body('inspectionStatus')
+    .optional()
+    .trim()
+    .escape(),
+
+  body('insuranceStatus')
+    .optional()
+    .trim()
+    .escape()
 ];
 
 const deleteVehicleValidator = [

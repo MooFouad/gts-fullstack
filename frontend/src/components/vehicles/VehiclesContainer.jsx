@@ -13,7 +13,7 @@ const VehiclesContainer = () => {
   const [deleteDialog, setDeleteDialog] = useState({ isOpen: false, id: null });
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
-  const { data: items, addItem, updateItem, deleteItem, loading, error } = useDataManagement('vehicle');
+  const { data: items, addItem, updateItem, deleteItem, loading, error, refreshData } = useDataManagement('vehicle');
 
   // Add debug logging
   useEffect(() => {
@@ -33,7 +33,7 @@ const VehiclesContainer = () => {
     if (filterStatus !== 'all') {
       const isLicenseExpired = new Date(item.licenseExpiryDate) < new Date();
       const isInspectionExpired = new Date(item.inspectionExpiryDate) < new Date();
-      
+
       if (filterStatus === 'expired') {
         matchStatus = isLicenseExpired || isInspectionExpired;
       } else if (filterStatus === 'warning') {
@@ -70,6 +70,8 @@ const VehiclesContainer = () => {
         await addItem(formData);
       }
       setFormDialog({ isOpen: false, data: null });
+      // Refresh data to ensure UI is updated
+      await refreshData();
     } catch (err) {
       console.error('Form submission error:', err);
       alert(`Error: ${err.message || 'Failed to save changes. Please try again.'}`);
@@ -80,10 +82,12 @@ const VehiclesContainer = () => {
     setDeleteDialog({ isOpen: true, id });
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (deleteDialog.id !== null) {
-      deleteItem(deleteDialog.id);
+      await deleteItem(deleteDialog.id);
       setDeleteDialog({ isOpen: false, id: null });
+      // Refresh data to ensure UI is updated
+      await refreshData();
     }
   };
 

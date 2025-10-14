@@ -55,7 +55,7 @@ const ElectricityContainer = () => {
       if (formDialog.data) {
         console.log('Updating item with ID:', formDialog.data._id);
         console.log('Update data:', formData);
-        
+
         await updateItem(formDialog.data._id, {
           ...formData,
           _id: formDialog.data._id
@@ -64,6 +64,8 @@ const ElectricityContainer = () => {
         await addItem(formData);
       }
       setFormDialog({ isOpen: false, data: null });
+      // Refresh data to ensure UI is updated
+      await refreshData();
     } catch (err) {
       console.error('Form submission error:', err);
       alert(`Error: ${err.message || 'Failed to save changes. Please try again.'}`);
@@ -74,10 +76,12 @@ const ElectricityContainer = () => {
     setDeleteDialog({ isOpen: true, id });
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (deleteDialog.id !== null) {
-      deleteItem(deleteDialog.id);
+      await deleteItem(deleteDialog.id);
       setDeleteDialog({ isOpen: false, id: null });
+      // Refresh data to ensure UI is updated
+      await refreshData();
     }
   };
 

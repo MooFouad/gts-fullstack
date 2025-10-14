@@ -21,7 +21,9 @@
       "Bash(dir:*)",
       "Bash(npm install:*)",
       "Bash(del \"c:\\web\\GTS\\New folder\\fullstack\\frontend\\convert-logo.js\")",
-      "Bash(npm uninstall:*)"
+      "Bash(npm uninstall:*)",
+      "Bash(del \"c:\\web\\GTS\\New folder\\fullstack\\backend\\test-vehicle-model.js\")",
+      "Bash(npm run build)"
     ],
     "deny": [],
     "ask": []

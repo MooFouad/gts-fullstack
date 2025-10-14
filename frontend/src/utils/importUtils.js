@@ -23,14 +23,15 @@ const readExcelFile = async (file) => {
 // Helper function to convert Excel serial date to JavaScript date
 const excelDateToJSDate = (serial) => {
   if (!serial) return '';
-  
-  // If it's already a string date, return it
+
+  // If it's already a string date in YYYY-MM-DD format, return it
   if (typeof serial === 'string') {
     // Check if it's already in YYYY-MM-DD format
     if (/^\d{4}-\d{2}-\d{2}$/.test(serial)) {
       return serial;
     }
-    // Try to parse the date
+
+    // Try to parse the date string
     const date = new Date(serial);
     if (!isNaN(date.getTime())) {
       const year = date.getFullYear();
@@ -40,16 +41,16 @@ const excelDateToJSDate = (serial) => {
     }
     return serial;
   }
-  
+
   // Excel dates are stored as number of days since 1900-01-01
   const utc_days = Math.floor(serial - 25569);
   const utc_value = utc_days * 86400;
   const date_info = new Date(utc_value * 1000);
-  
+
   const year = date_info.getFullYear();
   const month = String(date_info.getMonth() + 1).padStart(2, '0');
   const day = String(date_info.getDate()).padStart(2, '0');
-  
+
   return `${year}-${month}-${day}`;
 };
 
@@ -309,32 +310,57 @@ export const importHomeRentsFromExcel = async (file, addItemFunction) => {
 export const importVehiclesFromExcel = async (file, addItemFunction) => {
   try {
     const jsonData = await readExcelFile(file);
-    
+
     const vehicles = jsonData.map(row => ({
+      // 1. Plate Number
       plateNumber: getRowValue(row, ['Plate Number', 'رقم اللوحة', 'plateNumber']),
-      plateType: getRowValue(row, ['Plate Type', 'نوع اللوحة', 'plateType']),
-      vehicleMaker: getRowValue(row, ['Vehicle Maker', 'الشركة المصنعة', 'vehicleMaker']),
-      vehicleModel: getRowValue(row, ['Vehicle Model', 'الموديل', 'vehicleModel']),
-      modelYear: getRowValue(row, ['Model Year', 'سنة الصنع', 'modelYear']) || new Date().getFullYear(),
-      sequenceNumber: getRowValue(row, ['Sequence Number', 'الرقم التسلسلي', 'sequenceNumber']),
-      chassisNumber: getRowValue(row, ['Chassis Number', 'رقم الشاسيه', 'chassisNumber']),
-      licenseExpiryDate: excelDateToJSDate(getRowValue(row, ['License Expiry Date', 'تاريخ انتهاء الرخصة', 'licenseExpiryDate'])),
-      inspectionExpiryDate: excelDateToJSDate(getRowValue(row, ['Inspection Expiry Date', 'تاريخ انتهاء الفحص', 'inspectionExpiryDate'])),
-      actualDriverId: getRowValue(row, ['Actual Driver ID', 'رقم السائق', 'actualDriverId']),
-      actualDriverName: getRowValue(row, ['Driver Name', 'اسم السائق', 'actualDriverName']),
-      mvpiStatus: getRowValue(row, ['MVPI Status', 'حالة MVPI', 'mvpiStatus']) || 'Active',
-      insuranceStatus: getRowValue(row, ['Insurance Status', 'حالة التأمين', 'insuranceStatus']) || 'Valid',
-      restrictionStatus: getRowValue(row, ['Restriction Status', 'حالة القيود', 'restrictionStatus']) || 'None',
-      istemarahIssueDate: excelDateToJSDate(getRowValue(row, ['Istemarah Issue Date', 'تاريخ إصدار الاستمارة', 'istemarahIssueDate'])),
-      vehicleStatus: getRowValue(row, ['Vehicle Status', 'حالة المركبة', 'vehicleStatus']) || 'Active',
-      bodyType: getRowValue(row, ['Body Type', 'نوع الهيكل', 'bodyType']),
+
+      // 2. Registration Type
+      registrationType: getRowValue(row, ['Registration Type', 'نوع التسجيل', 'registrationType']),
+
+      // 3. Brand
+      vehicleMaker: getRowValue(row, ['Brand', 'Vehicle Maker', 'الشركة المصنعة', 'vehicleMaker', 'Maker']),
+
+      // 4. Model
+      vehicleModel: getRowValue(row, ['Model', 'Vehicle Model', 'الموديل', 'vehicleModel']),
+
+      // 5. Year of Manufacture
+      modelYear: getRowValue(row, ['Year of Manufacture', 'Model Year', 'سنة الصنع', 'modelYear', 'Year']) || new Date().getFullYear(),
+
+      // 6. Serial Number
+      sequenceNumber: getRowValue(row, ['Serial Number', 'Sequence Number', 'الرقم التسلسلي', 'sequenceNumber', 'Sequence']),
+
+      // 7. Chassis Number
+      chassisNumber: getRowValue(row, ['Chassis Number', 'رقم الشاسيه', 'chassisNumber', 'Chassis']),
+
+      // 8. Basic Color
+      basicColor: getRowValue(row, ['Basic Color', 'اللون الأساسي', 'basicColor', 'Color']),
+
+      // 9. License Expiry Date
+      licenseExpiryDate: excelDateToJSDate(getRowValue(row, ['License Expiry Date', 'تاريخ انتهاء الرخصة', 'licenseExpiryDate', 'License Expiry'])),
+
+      // 10. Inspection Expiry Date
+      inspectionExpiryDate: excelDateToJSDate(getRowValue(row, ['Inspection Expiry Date', 'تاريخ انتهاء الفحص', 'inspectionExpiryDate', 'Inspection Expiry'])),
+
+      // 11. Actual User ID Number
+      actualDriverId: getRowValue(row, ['Actual User ID Number', 'Actual User ID', 'رقم هوية المستخدم الفعلي', 'actualDriverId', 'Driver ID']),
+
+      // 12. Actual User Name
+      actualDriverName: getRowValue(row, ['Actual User Name', 'اسم المستخدم الفعلي', 'actualDriverName', 'Driver Name']),
+
+      // 13. Inspection Status
+      inspectionStatus: getRowValue(row, ['Inspection Status', 'حالة الفحص', 'inspectionStatus']) || 'Valid',
+
+      // 14. Insurance Status
+      insuranceStatus: getRowValue(row, ['Insurance Status', 'حالة التأمين', 'insuranceStatus', 'Insurance']) || 'Valid',
+
       attachments: []
     }));
 
     // Validate required fields
     const invalidRows = vehicles.filter(v => !v.plateNumber || !v.vehicleMaker);
     if (invalidRows.length > 0) {
-      throw new Error('Some rows are missing required fields (Plate Number, Vehicle Maker)');
+      throw new Error('Some rows are missing required fields (Plate Number, Brand)');
     }
 
     let successCount = 0;
