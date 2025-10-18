@@ -59,7 +59,3 @@ coverage/
 # Misc
 .cache/
 .parcel-cache/
-
-*.md
-.claude
-.ignore
