@@ -28,12 +28,13 @@ class NotificationScheduler {
     });
 
     // Optional: Run immediately on startup (for testing)
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🧪 DEV MODE: Running initial notification check in 5 seconds...\n');
-      setTimeout(() => {
-        notificationService.sendAllNotifications();
-      }, 5000);
-    }
+    // Disabled to reduce console noise - uncomment if needed
+    // if (process.env.NODE_ENV === 'development') {
+    //   console.log('🧪 DEV MODE: Running initial notification check in 5 seconds...\n');
+    //   setTimeout(() => {
+    //     notificationService.sendAllNotifications();
+    //   }, 5000);
+    // }
   }
 }
 

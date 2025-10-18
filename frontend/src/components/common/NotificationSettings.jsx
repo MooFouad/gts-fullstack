@@ -138,6 +138,12 @@ const NotificationSettings = () => {
         return;
       }
 
+      // Get email from subscriptions
+      let testEmail = localStorage.getItem('gts_notification_email');
+      if (!testEmail && subscriptions.length > 0) {
+        testEmail = subscriptions[0].userEmail;
+      }
+
       // Test browser notification directly first
       addDebugLog('🔔 Testing browser notification API directly...');
       if ('Notification' in window && Notification.permission === 'granted') {
@@ -154,11 +160,28 @@ const NotificationSettings = () => {
         }
       }
 
+      // Send browser push notification
+      addDebugLog('📱 Sending browser push notification...');
       await pushNotificationService.sendTestNotification();
-      setMessage('✅ Test notification sent! Check your browser and email.');
       addDebugLog('✅ Test push notification sent to server');
       addDebugLog('👀 Check Windows notification center (bottom right corner)');
-      addDebugLog('📧 Check your email inbox');
+
+      // Send email notification if email is available
+      if (testEmail) {
+        addDebugLog(`📧 Sending test email to ${testEmail}...`);
+        try {
+          await pushNotificationService.sendTestEmail(testEmail);
+          addDebugLog(`✅ Test email sent to ${testEmail}`);
+          addDebugLog('📬 Check your email inbox (may take 1-2 minutes)');
+        } catch (emailError) {
+          addDebugLog(`⚠️ Email test failed: ${emailError.message}`);
+          addDebugLog('Note: Browser notification still works!');
+        }
+      } else {
+        addDebugLog('⚠️ No email found - only browser notification sent');
+      }
+
+      setMessage('✅ Test notifications sent! Check your browser and email.');
     } catch (error) {
       setMessage(`❌ Error: ${error.message}`);
       addDebugLog(`❌ Error: ${error.message}`);

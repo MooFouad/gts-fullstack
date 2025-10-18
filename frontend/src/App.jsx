@@ -9,13 +9,13 @@ import ElectricityContainer from './components/electricity/ElectricityContainer'
 import { vehicleService, homeRentService, electricityService } from './services';
 
 // Lazy load notification components to prevent errors
-const NotificationSettings = React.lazy(() => 
+const NotificationSettings = React.lazy(() =>
   import('./components/common/NotificationSettings').catch(() => ({
     default: () => <div>Notification Settings Not Available</div>
   }))
 );
 
-const NotificationDiagnostics = React.lazy(() => 
+const NotificationDiagnostics = React.lazy(() =>
   import('./components/common/NotificationDiagnostics').catch(() => ({
     default: () => <div>Diagnostics Not Available</div>
   }))

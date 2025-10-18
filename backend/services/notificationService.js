@@ -56,12 +56,14 @@ class NotificationService {
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   }
 
-  // Check if item needs notification (daily from N days before until expiration)
+  // Check if item needs notification
   shouldNotify(daysUntil) {
+    if (daysUntil === null) return false;
+
     const threshold = parseInt(process.env.NOTIFICATION_DAYS_BEFORE) || 10;
-    // Send notification every day from threshold days before until expiration day (0)
-    // Example: If threshold=10, notify when daysUntil is 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, or 0
-    return daysUntil !== null && daysUntil <= threshold && daysUntil >= 0;
+
+    // Send notifications from threshold days before and continue indefinitely (even if expired)
+    return daysUntil <= threshold;
   }
 
   // Get all items that need notifications
@@ -74,82 +76,121 @@ class NotificationService {
       for (const vehicle of vehicles) {
         const licenseDays = this.getDaysUntilExpiration(vehicle.licenseExpiryDate);
         const inspectionDays = this.getDaysUntilExpiration(vehicle.inspectionExpiryDate);
+        const insuranceDays = this.getDaysUntilExpiration(vehicle.insuranceExpiryDate);
 
-        if (this.shouldNotify(licenseDays)) {
+        // License notification
+        if (this.shouldNotify(licenseDays) && vehicle.licenseExpiryDate) {
+          const status = licenseDays < 0
+            ? `Expired ${Math.abs(licenseDays)} days ago`
+            : licenseDays === 0
+              ? 'Expires Today'
+              : `${licenseDays} days remaining`;
+
           notifications.push({
             type: 'vehicle',
             subType: 'license',
             item: vehicle,
+            itemId: vehicle._id,
+            fieldName: 'licenseExpiryDate',
+            expiryDate: vehicle.licenseExpiryDate,
             daysUntil: licenseDays,
-            title: '🚗 Vehicle License Expiring Soon',
-            message: `Vehicle ${vehicle.plateNumber} license expires in ${licenseDays} days (${vehicle.licenseExpiryDate})`
+            title: licenseDays < 0 ? '❌ Vehicle License EXPIRED' : '🚗 Vehicle License Expiring Soon',
+            message: `Vehicle ${vehicle.plateNumber} license - ${status} (${new Date(vehicle.licenseExpiryDate).toLocaleDateString()})`
           });
         }
 
-        if (this.shouldNotify(inspectionDays)) {
+        // Inspection notification
+        if (this.shouldNotify(inspectionDays) && vehicle.inspectionExpiryDate) {
+          const status = inspectionDays < 0
+            ? `Expired ${Math.abs(inspectionDays)} days ago`
+            : inspectionDays === 0
+              ? 'Expires Today'
+              : `${inspectionDays} days remaining`;
+
           notifications.push({
             type: 'vehicle',
             subType: 'inspection',
             item: vehicle,
+            itemId: vehicle._id,
+            fieldName: 'inspectionExpiryDate',
+            expiryDate: vehicle.inspectionExpiryDate,
             daysUntil: inspectionDays,
-            title: '🔧 Vehicle Inspection Due',
-            message: `Vehicle ${vehicle.plateNumber} inspection expires in ${inspectionDays} days (${vehicle.inspectionExpiryDate})`
+            title: inspectionDays < 0 ? '❌ Vehicle Inspection EXPIRED' : '🔧 Vehicle Inspection Due',
+            message: `Vehicle ${vehicle.plateNumber} inspection - ${status} (${new Date(vehicle.inspectionExpiryDate).toLocaleDateString()})`
+          });
+        }
+
+        // Insurance notification
+        if (this.shouldNotify(insuranceDays) && vehicle.insuranceExpiryDate) {
+          const status = insuranceDays < 0
+            ? `Expired ${Math.abs(insuranceDays)} days ago`
+            : insuranceDays === 0
+              ? 'Expires Today'
+              : `${insuranceDays} days remaining`;
+
+          notifications.push({
+            type: 'vehicle',
+            subType: 'insurance',
+            item: vehicle,
+            itemId: vehicle._id,
+            fieldName: 'insuranceExpiryDate',
+            expiryDate: vehicle.insuranceExpiryDate,
+            daysUntil: insuranceDays,
+            title: insuranceDays < 0 ? '❌ Vehicle Insurance EXPIRED' : '🛡️ Vehicle Insurance Expiring Soon',
+            message: `Vehicle ${vehicle.plateNumber} insurance - ${status} (${new Date(vehicle.insuranceExpiryDate).toLocaleDateString()})${vehicle.insuranceCompany ? ' - ' + vehicle.insuranceCompany : ''}`
           });
         }
       }
 
-      // Check Home Rents
+      // Check Home Rents - Only check contract ending date
       const homeRents = await HomeRent.find({});
       for (const rent of homeRents) {
         const contractDays = this.getDaysUntilExpiration(rent.contractEndingDate);
 
-        if (this.shouldNotify(contractDays)) {
+        // Contract expiry notification (only based on contract ending date)
+        if (this.shouldNotify(contractDays) && rent.contractEndingDate) {
+          const status = contractDays < 0
+            ? `Expired ${Math.abs(contractDays)} days ago`
+            : contractDays === 0
+              ? 'Expires Today'
+              : `${contractDays} days remaining`;
+
           notifications.push({
             type: 'homeRent',
             subType: 'contract',
             item: rent,
+            itemId: rent._id,
+            fieldName: 'contractEndingDate',
+            expiryDate: rent.contractEndingDate,
             daysUntil: contractDays,
-            title: '🏠 Rental Contract Expiring',
-            message: `Contract ${rent.contractNumber} expires in ${contractDays} days (${rent.contractEndingDate})`
+            title: contractDays < 0 ? '❌ Rental Contract EXPIRED' : '🏠 Rental Contract Expiring',
+            message: `Contract ${rent.contractNumber} - ${status} (${new Date(rent.contractEndingDate).toLocaleDateString()})`
           });
-        }
-
-        // Check payment dates
-        const payments = [
-          { date: rent.firstPaymentDate, name: 'First' },
-          { date: rent.secondPaymentDate, name: 'Second' },
-          { date: rent.thirdPaymentDate, name: 'Third' },
-          { date: rent.fourthPaymentDate, name: 'Fourth' }
-        ];
-
-        for (const payment of payments) {
-          const paymentDays = this.getDaysUntilExpiration(payment.date);
-          if (this.shouldNotify(paymentDays)) {
-            notifications.push({
-              type: 'homeRent',
-              subType: 'payment',
-              item: rent,
-              daysUntil: paymentDays,
-              title: '💰 Rent Payment Due',
-              message: `${payment.name} payment for ${rent.contractNumber} due in ${paymentDays} days (${payment.date})`
-            });
-          }
         }
       }
 
-      // Check Electricity Bills
+      // Check Electricity Bills (only unpaid bills)
       const bills = await Electricity.find({ paymentStatus: { $ne: 'Paid' } });
       for (const bill of bills) {
         const dueDays = this.getDaysUntilExpiration(bill.dueDate);
 
-        if (this.shouldNotify(dueDays)) {
+        if (this.shouldNotify(dueDays) && bill.dueDate) {
+          const status = dueDays < 0
+            ? `Overdue ${Math.abs(dueDays)} days`
+            : dueDays === 0
+              ? 'Due Today'
+              : `${dueDays} days remaining`;
+
           notifications.push({
             type: 'electricity',
             subType: 'payment',
             item: bill,
+            itemId: bill._id,
+            fieldName: 'dueDate',
+            expiryDate: bill.dueDate,
             daysUntil: dueDays,
-            title: '⚡ Electricity Bill Due',
-            message: `Bill for ${bill.location} (${bill.meterNumber}) due in ${dueDays} days - SAR ${bill.billAmount}`
+            title: dueDays < 0 ? '❌ Electricity Bill OVERDUE' : '⚡ Electricity Bill Due',
+            message: `Bill for ${bill.location} (meter ${bill.meterNumber}) - ${status} - SAR ${bill.billAmount} (${new Date(bill.dueDate).toLocaleDateString()})`
           });
         }
       }
@@ -238,6 +279,14 @@ class NotificationService {
       if (!transporter) {
         return { success: false, skipped: true, reason: 'Email not configured' };
       }
+
+      // Generate proper status message
+      const statusMessage = notification.daysUntil < 0
+        ? `<strong style="color: #dc2626;">Status:</strong> Expired ${Math.abs(notification.daysUntil)} days ago`
+        : notification.daysUntil === 0
+          ? `<strong style="color: #ea580c;">Status:</strong> Expires Today`
+          : `<strong style="color: #f59e0b;">Days Remaining:</strong> ${notification.daysUntil} days`;
+
       const htmlContent = `
         <!DOCTYPE html>
         <html>
@@ -248,6 +297,7 @@ class NotificationService {
             .header { background: #2563eb; color: white; padding: 20px; text-align: center; }
             .content { background: #f9fafb; padding: 20px; margin: 20px 0; border-radius: 5px; }
             .alert { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 15px 0; }
+            .alert-expired { background: #fee2e2; border-left: 4px solid #dc2626; padding: 15px; margin: 15px 0; }
             .footer { text-align: center; color: #6b7280; font-size: 12px; margin-top: 20px; }
             .button { display: inline-block; background: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-top: 10px; }
           </style>
@@ -259,13 +309,13 @@ class NotificationService {
             </div>
             <div class="content">
               <h2>${notification.title}</h2>
-              <div class="alert">
-                <strong>⚠️ Expiration Alert</strong><br>
+              <div class="${notification.daysUntil < 0 ? 'alert-expired' : 'alert'}">
+                <strong>${notification.daysUntil < 0 ? '❌' : '⚠️'} Expiration Alert</strong><br>
                 ${notification.message}
               </div>
-              <p><strong>Days Remaining:</strong> ${notification.daysUntil} days</p>
+              <p>${statusMessage}</p>
               <p><strong>Type:</strong> ${notification.type}</p>
-              <p>Please take necessary action before the expiration date.</p>
+              <p>${notification.daysUntil < 0 ? 'This item is overdue! Please take immediate action.' : 'Please take necessary action before the expiration date.'}</p>
               <a href="${process.env.APP_URL || 'http://localhost:5173'}" class="button">
                 View Dashboard
               </a>
@@ -311,13 +361,23 @@ class NotificationService {
       const typeTitle = typeTitles[type] || 'Alerts';
 
       // Generate alert items HTML
-      const alertItems = notifications.map(notif => `
-        <div class="alert">
+      const alertItems = notifications.map(notif => {
+        const statusText = notif.daysUntil < 0
+          ? `Expired ${Math.abs(notif.daysUntil)} days ago`
+          : notif.daysUntil === 0
+            ? 'Expires Today'
+            : `${notif.daysUntil} days remaining`;
+
+        const alertClass = notif.daysUntil < 0 ? 'alert-expired' : 'alert';
+
+        return `
+        <div class="${alertClass}">
           <strong>${notif.title}</strong><br>
           ${notif.message}<br>
-          <small><strong>Days Remaining:</strong> ${notif.daysUntil} days</small>
+          <small><strong>Status:</strong> ${statusText}</small>
         </div>
-      `).join('');
+      `;
+      }).join('');
 
       const htmlContent = `
         <!DOCTYPE html>
@@ -329,6 +389,7 @@ class NotificationService {
             .header { background: #2563eb; color: white; padding: 20px; text-align: center; }
             .content { background: #f9fafb; padding: 20px; margin: 20px 0; border-radius: 5px; }
             .alert { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 15px 0; }
+            .alert-expired { background: #fee2e2; border-left: 4px solid #dc2626; padding: 15px; margin: 15px 0; }
             .footer { text-align: center; color: #6b7280; font-size: 12px; margin-top: 20px; }
             .button { display: inline-block; background: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-top: 10px; }
           </style>
@@ -407,8 +468,11 @@ class NotificationService {
     console.log('\n📱 Sending Windows Push Notifications...');
     for (const notification of notifications) {
       console.log(`\n📤 Processing push: ${notification.title} (${notification.daysUntil} days until expiration)`);
+      console.log(`   📝 Message: ${notification.message}`);
       const pushResult = await this.sendPushNotification(notification);
-      if (pushResult.success) pushSent++;
+      if (pushResult.success) {
+        pushSent++;
+      }
     }
 
     // ========== EMAIL NOTIFICATIONS (Uses same PushSubscription data) ==========

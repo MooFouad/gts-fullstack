@@ -125,23 +125,15 @@ export const generateVehicleTemplate = () => {
 export const generateElectricityTemplate = () => {
   const templateData = [
     {
-      'Department Number': 'DEPT-001',
+      'No.': '1',
+      'Account': 'ACC-001',
+      'Name': 'GTS Company',
+      'City': 'Riyadh',
+      'Address': 'Main Street, Building 5',
+      'Project': 'Project A',
+      'Division': 'Division 1',
       'Meter Number': 'MTR-2024-001',
-      'Location': 'Main Building',
-      'Last Reading Date': '2025-01-01',
-      'Current Reading': 5000,
-      'Previous Reading': 4500,
-      'Consumption': 500,
-      'Bill Amount': 750,
-      'Bill Date': '2025-01-02',
-      'Due Date': '2025-01-25',
-      'Payment Status': 'Pending',
-      'Property Type': 'Commercial',
-      'Subscriber Name': 'GTS Company',
-      'Subscriber Number': 'SUB-001',
-      'Notes': 'Monthly bill',
-      'Alert Threshold': 600,
-      'Last Month Consumption': 480
+      'Date': '2025-01-01'
     }
   ];
 
@@ -149,11 +141,8 @@ export const generateElectricityTemplate = () => {
   const ws = XLSX.utils.json_to_sheet(templateData);
 
   ws['!cols'] = [
-    { wch: 18 }, { wch: 18 }, { wch: 20 }, { wch: 18 },
-    { wch: 15 }, { wch: 15 }, { wch: 12 }, { wch: 12 },
-    { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 },
-    { wch: 20 }, { wch: 18 }, { wch: 30 }, { wch: 15 },
-    { wch: 20 }
+    { wch: 10 }, { wch: 18 }, { wch: 20 }, { wch: 15 }, { wch: 25 },
+    { wch: 20 }, { wch: 18 }, { wch: 18 }, { wch: 15 }
   ];
 
   XLSX.utils.book_append_sheet(wb, ws, 'Electricity Template');

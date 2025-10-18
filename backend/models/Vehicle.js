@@ -49,6 +49,22 @@ const vehicleSchema = new mongoose.Schema({
   // 14. Insurance Status (حالة التأمين)
   insuranceStatus: { type: String },
 
+  // Additional insurance fields from Absher
+  insuranceCompany: { type: String },
+  insurancePolicyNumber: { type: String },
+  insuranceExpiryDate: {
+    type: Date,
+    set: v => v ? new Date(v) : null
+  },
+
+  // Data source tracking
+  dataSource: {
+    type: String,
+    enum: ['manual', 'absher', 'import'],
+    default: 'manual'
+  },
+  lastSyncDate: { type: Date },
+
   // Additional system fields
   attachments: [{ type: Object }],
   createdAt: { type: Date, default: Date.now }
@@ -61,6 +77,8 @@ const vehicleSchema = new mongoose.Schema({
 vehicleSchema.index({ plateNumber: 1 });
 vehicleSchema.index({ licenseExpiryDate: 1 });
 vehicleSchema.index({ inspectionExpiryDate: 1 });
+vehicleSchema.index({ insuranceExpiryDate: 1 });
+vehicleSchema.index({ dataSource: 1 });
 
 // Add query timeout
 vehicleSchema.pre('find', function() {
@@ -74,6 +92,9 @@ vehicleSchema.pre('save', function(next) {
   }
   if (this.inspectionExpiryDate && isNaN(this.inspectionExpiryDate.getTime())) {
     this.inspectionExpiryDate = null;
+  }
+  if (this.insuranceExpiryDate && isNaN(this.insuranceExpiryDate.getTime())) {
+    this.insuranceExpiryDate = null;
   }
   next();
 });

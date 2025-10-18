@@ -324,6 +324,19 @@ class PushNotificationService {
     }
   }
 
+  // Send test EMAIL notification to specific email
+  async sendTestEmail(email) {
+    try {
+      console.log('Sending test EMAIL notification to:', email);
+      await api.post('/notifications/test', { email });
+      console.log('✅ Test email notification sent');
+      return true;
+    } catch (error) {
+      console.error('Error sending test email notification:', error);
+      throw error;
+    }
+  }
+
   // Get current subscription info
   async getSubscriptionInfo() {
     try {

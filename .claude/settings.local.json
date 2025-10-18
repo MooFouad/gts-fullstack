@@ -23,7 +23,13 @@
       "Bash(del \"c:\\web\\GTS\\New folder\\fullstack\\frontend\\convert-logo.js\")",
       "Bash(npm uninstall:*)",
       "Bash(del \"c:\\web\\GTS\\New folder\\fullstack\\backend\\test-vehicle-model.js\")",
-      "Bash(npm run build)"
+      "Bash(npm run build)",
+      "Bash(nslookup:*)",
+      "Bash(ping:*)",
+      "Bash(ipconfig:*)",
+      "Bash(git log:*)",
+      "Read(//c/**)",
+      "Bash(del modelsNotificationHistory.js)"
     ],
     "deny": [],
     "ask": []

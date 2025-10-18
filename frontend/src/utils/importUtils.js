@@ -379,32 +379,24 @@ export const importVehiclesFromExcel = async (file, addItemFunction) => {
 export const importElectricityFromExcel = async (file, addItemFunction) => {
   try {
     const jsonData = await readExcelFile(file);
-    
+
     const bills = jsonData.map(row => ({
-      departmentNumber: getRowValue(row, ['Department Number', 'رقم القسم', 'departmentNumber']),
+      no: getRowValue(row, ['No.', 'No', 'رقم', 'no']),
+      account: getRowValue(row, ['Account', 'الحساب', 'account']),
+      name: getRowValue(row, ['Name', 'الاسم', 'name']),
+      city: getRowValue(row, ['City', 'المدينة', 'city']),
+      address: getRowValue(row, ['Address', 'العنوان', 'address']),
+      project: getRowValue(row, ['Project', 'المشروع', 'project']),
+      division: getRowValue(row, ['Division', 'القسم', 'division']),
       meterNumber: getRowValue(row, ['Meter Number', 'رقم العداد', 'meterNumber']),
-      location: getRowValue(row, ['Location', 'الموقع', 'location']),
-      lastReadingDate: excelDateToJSDate(getRowValue(row, ['Last Reading Date', 'تاريخ القراءة الأخيرة', 'lastReadingDate'])),
-      currentReading: getRowValue(row, ['Current Reading', 'القراءة الحالية', 'currentReading']) || 0,
-      previousReading: getRowValue(row, ['Previous Reading', 'القراءة السابقة', 'previousReading']) || 0,
-      consumption: getRowValue(row, ['Consumption', 'الاستهلاك', 'consumption']) || 0,
-      billAmount: getRowValue(row, ['Bill Amount', 'مبلغ الفاتورة', 'billAmount']) || 0,
-      billDate: excelDateToJSDate(getRowValue(row, ['Bill Date', 'تاريخ الفاتورة', 'billDate'])),
-      dueDate: excelDateToJSDate(getRowValue(row, ['Due Date', 'تاريخ الاستحقاق', 'dueDate'])),
-      paymentStatus: getRowValue(row, ['Payment Status', 'حالة الدفع', 'paymentStatus']) || 'Pending',
-      propertyType: getRowValue(row, ['Property Type', 'نوع العقار', 'propertyType']),
-      subscriberName: getRowValue(row, ['Subscriber Name', 'اسم المشترك', 'subscriberName']),
-      subscriberNumber: getRowValue(row, ['Subscriber Number', 'رقم المشترك', 'subscriberNumber']),
-      notes: getRowValue(row, ['Notes', 'ملاحظات', 'notes']),
-      alertThreshold: getRowValue(row, ['Alert Threshold', 'حد التنبيه', 'alertThreshold']) || null,
-      lastMonthConsumption: getRowValue(row, ['Last Month Consumption', 'استهلاك الشهر السابق', 'lastMonthConsumption']) || null,
+      date: excelDateToJSDate(getRowValue(row, ['Date', 'التاريخ', 'date'])),
       attachments: []
     }));
 
     // Validate required fields
-    const invalidRows = bills.filter(b => !b.departmentNumber || !b.meterNumber);
+    const invalidRows = bills.filter(b => !b.account || !b.meterNumber);
     if (invalidRows.length > 0) {
-      throw new Error('Some rows are missing required fields (Department Number, Meter Number)');
+      throw new Error('Some rows are missing required fields (Account, Meter Number)');
     }
 
     let successCount = 0;

@@ -170,24 +170,15 @@ export const exportElectricityToExcel = (electricity) => {
 
   // Select only the fields that appear in the table
   const exportData = electricity.map(bill => ({
-    'Department Number': bill.departmentNumber || '',
+    'No.': bill.no || '',
+    'Account': bill.account || '',
+    'Name': bill.name || '',
+    'City': bill.city || '',
+    'Address': bill.address || '',
+    'Project': bill.project || '',
+    'Division': bill.division || '',
     'Meter Number': bill.meterNumber || '',
-    'Location': bill.location || '',
-    'Property Type': bill.propertyType || '',
-    'Subscriber Name': bill.subscriberName || '',
-    'Subscriber Number': bill.subscriberNumber || '',
-    'Last Reading Date': bill.lastReadingDate || '',
-    'Current Reading': bill.currentReading || '',
-    'Previous Reading': bill.previousReading || '',
-    'Consumption': bill.consumption || '',
-    'Bill Amount': bill.billAmount || '',
-    'Bill Date': bill.billDate || '',
-    'Due Date': bill.dueDate || '',
-    'Payment Date': bill.paymentDate || '',
-    'Payment Status': bill.paymentStatus || '',
-    'Alert Threshold': bill.alertThreshold || '',
-    'Last Month Consumption': bill.lastMonthConsumption || '',
-    'Notes': bill.notes || ''
+    'Date': bill.date || ''
   }));
 
   const wb = XLSX.utils.book_new();
@@ -195,13 +186,11 @@ export const exportElectricityToExcel = (electricity) => {
 
   // Set column widths
   ws['!cols'] = [
-    { wch: 18 }, { wch: 18 }, { wch: 20 }, { wch: 15 }, { wch: 20 },
-    { wch: 18 }, { wch: 18 }, { wch: 15 }, { wch: 15 }, { wch: 12 },
-    { wch: 12 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 },
-    { wch: 15 }, { wch: 20 }, { wch: 30 }
+    { wch: 10 }, { wch: 18 }, { wch: 20 }, { wch: 15 }, { wch: 25 },
+    { wch: 20 }, { wch: 18 }, { wch: 18 }, { wch: 15 }
   ];
 
-  XLSX.utils.book_append_sheet(wb, ws, 'Electricity Bills');
+  XLSX.utils.book_append_sheet(wb, ws, 'Electricity');
 
   const timestamp = new Date().toISOString().split('T')[0];
   XLSX.writeFile(wb, `Electricity_Export_${timestamp}.xlsx`);
@@ -270,24 +259,15 @@ export const exportAllDataToExcel = (vehicles, homeRents, electricity) => {
   // Add electricity sheet
   if (electricity && electricity.length > 0) {
     const electricityData = electricity.map(bill => ({
-      'Department Number': bill.departmentNumber || '',
+      'No.': bill.no || '',
+      'Account': bill.account || '',
+      'Name': bill.name || '',
+      'City': bill.city || '',
+      'Address': bill.address || '',
+      'Project': bill.project || '',
+      'Division': bill.division || '',
       'Meter Number': bill.meterNumber || '',
-      'Location': bill.location || '',
-      'Property Type': bill.propertyType || '',
-      'Subscriber Name': bill.subscriberName || '',
-      'Subscriber Number': bill.subscriberNumber || '',
-      'Last Reading Date': bill.lastReadingDate || '',
-      'Current Reading': bill.currentReading || '',
-      'Previous Reading': bill.previousReading || '',
-      'Consumption': bill.consumption || '',
-      'Bill Amount': bill.billAmount || '',
-      'Bill Date': bill.billDate || '',
-      'Due Date': bill.dueDate || '',
-      'Payment Date': bill.paymentDate || '',
-      'Payment Status': bill.paymentStatus || '',
-      'Alert Threshold': bill.alertThreshold || '',
-      'Last Month Consumption': bill.lastMonthConsumption || '',
-      'Notes': bill.notes || ''
+      'Date': bill.date || ''
     }));
     const wsElectricity = XLSX.utils.json_to_sheet(electricityData);
     XLSX.utils.book_append_sheet(wb, wsElectricity, 'Electricity');
