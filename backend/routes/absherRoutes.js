@@ -80,14 +80,28 @@ router.post('/sync', async (req, res, next) => {
 
     console.log(`\n✅ Sync complete: ${results.successful}/${results.total} successful`);
 
+    // Return success even if some vehicles failed
+    // The client can check the results.failed count
     res.json({
-      success: true,
-      message: `Sync complete: ${results.successful}/${results.total} vehicles updated`,
+      success: results.failed < results.total, // Success if at least one vehicle synced
+      message: results.successful > 0
+        ? `Sync complete: ${results.successful}/${results.total} vehicles updated`
+        : `Sync failed: All ${results.total} vehicles failed to sync. Check network connection and Absher API credentials.`,
       data: results
     });
   } catch (error) {
     console.error('❌ Error in sync:', error);
-    next(error);
+
+    // Send proper error response instead of passing to error handler
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Sync failed',
+      error: {
+        message: error.message,
+        code: error.code,
+        details: error.response?.data || null
+      }
+    });
   }
 });
 
@@ -148,6 +162,114 @@ router.post('/test-connection', async (req, res, next) => {
     });
   } catch (error) {
     console.error('❌ Connection test failed:', error);
+    next(error);
+  }
+});
+
+/**
+ * POST /api/absher/istemarah/request-renewal
+ * Request Istemarah (Vehicle Registration) Renewal
+ */
+router.post('/istemarah/request-renewal', async (req, res, next) => {
+  try {
+    const { plateNumber, sequenceNumber, additionalData } = req.body;
+
+    if (!plateNumber || !sequenceNumber) {
+      return next(new AppError('Plate number and sequence number are required', 400));
+    }
+
+    console.log(`🔄 Requesting Istemarah renewal for: ${plateNumber} (${sequenceNumber})`);
+
+    const renewalData = await absherService.requestIstemarahRenewal(
+      plateNumber,
+      sequenceNumber,
+      additionalData
+    );
+
+    res.json({
+      success: true,
+      message: 'Istemarah renewal request submitted successfully',
+      data: renewalData
+    });
+  } catch (error) {
+    console.error('❌ Error requesting Istemarah renewal:', error);
+    next(error);
+  }
+});
+
+/**
+ * POST /api/absher/istemarah/renewal-details
+ * Get Istemarah Renewal Details
+ */
+router.post('/istemarah/renewal-details', async (req, res, next) => {
+  try {
+    const { plateNumber, sequenceNumber } = req.body;
+
+    if (!plateNumber || !sequenceNumber) {
+      return next(new AppError('Plate number and sequence number are required', 400));
+    }
+
+    console.log(`🔍 Fetching Istemarah renewal details for: ${plateNumber} (${sequenceNumber})`);
+
+    const details = await absherService.getIstemarahRenewalDetails(
+      plateNumber,
+      sequenceNumber
+    );
+
+    res.json({
+      success: true,
+      message: 'Istemarah renewal details retrieved successfully',
+      data: details
+    });
+  } catch (error) {
+    console.error('❌ Error fetching Istemarah renewal details:', error);
+    next(error);
+  }
+});
+
+/**
+ * POST /api/absher/istemarah/renew-vehicle/:id
+ * Request Istemarah renewal for a specific vehicle by ID
+ */
+router.post('/istemarah/renew-vehicle/:id', async (req, res, next) => {
+  try {
+    const vehicle = await Vehicle.findById(req.params.id);
+
+    if (!vehicle) {
+      return next(new AppError('Vehicle not found', 404));
+    }
+
+    if (!vehicle.plateNumber || !vehicle.sequenceNumber) {
+      return next(new AppError('Vehicle must have plate number and sequence number', 400));
+    }
+
+    console.log(`🔄 Requesting Istemarah renewal for vehicle: ${vehicle.plateNumber}`);
+
+    const renewalData = await absherService.requestIstemarahRenewal(
+      vehicle.plateNumber,
+      vehicle.sequenceNumber,
+      req.body.additionalData || {}
+    );
+
+    // Update vehicle with renewal data
+    vehicle.renewalRequestId = renewalData.renewalRequestId;
+    vehicle.renewalStatus = renewalData.renewalStatus;
+    vehicle.renewalFees = renewalData.renewalFees;
+    vehicle.lastRenewalRequestDate = new Date();
+    await vehicle.save();
+
+    console.log(`✅ Istemarah renewal requested for vehicle: ${vehicle.plateNumber}`);
+
+    res.json({
+      success: true,
+      message: 'Istemarah renewal request submitted successfully',
+      data: {
+        vehicle: vehicle,
+        renewal: renewalData
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error requesting Istemarah renewal:', error);
     next(error);
   }
 });

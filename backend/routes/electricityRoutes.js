@@ -12,7 +12,7 @@ const {
 // GET all electricity bills
 router.get('/', async (req, res, next) => {
   try {
-    const bills = await Electricity.find({}).sort({ createdAt: -1 });
+    const bills = await Electricity.find({}).sort({ createdAt: 1 });
     res.json({
       success: true,
       count: bills.length,

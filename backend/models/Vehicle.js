@@ -57,6 +57,20 @@ const vehicleSchema = new mongoose.Schema({
     set: v => v ? new Date(v) : null
   },
 
+  // Istemarah (Registration) renewal fields
+  renewalRequestId: { type: String },
+  renewalStatus: {
+    type: String,
+    enum: ['pending', 'approved', 'rejected', 'completed', 'cancelled'],
+    default: null
+  },
+  renewalFees: { type: Number },
+  renewalExpiryDate: {
+    type: Date,
+    set: v => v ? new Date(v) : null
+  },
+  lastRenewalRequestDate: { type: Date },
+
   // Data source tracking
   dataSource: {
     type: String,
@@ -78,6 +92,8 @@ vehicleSchema.index({ plateNumber: 1 });
 vehicleSchema.index({ licenseExpiryDate: 1 });
 vehicleSchema.index({ inspectionExpiryDate: 1 });
 vehicleSchema.index({ insuranceExpiryDate: 1 });
+vehicleSchema.index({ renewalExpiryDate: 1 });
+vehicleSchema.index({ renewalStatus: 1 });
 vehicleSchema.index({ dataSource: 1 });
 
 // Add query timeout
@@ -95,6 +111,9 @@ vehicleSchema.pre('save', function(next) {
   }
   if (this.insuranceExpiryDate && isNaN(this.insuranceExpiryDate.getTime())) {
     this.insuranceExpiryDate = null;
+  }
+  if (this.renewalExpiryDate && isNaN(this.renewalExpiryDate.getTime())) {
+    this.renewalExpiryDate = null;
   }
   next();
 });

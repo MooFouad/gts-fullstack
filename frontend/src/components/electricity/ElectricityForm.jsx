@@ -35,90 +35,81 @@ const ElectricityForm = ({ onSubmit, onCancel, initialData = null }) => {
   return (
     <form onSubmit={handleSubmit} className="space-y-4 p-6">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <FormField label="No." required>
+        <FormField label="No.">
           <input
             type="text"
-            required
             className="w-full border rounded px-3 py-2"
             value={formData.no}
             onChange={(e) => handleChange('no', e.target.value)}
           />
         </FormField>
 
-        <FormField label="Account" required>
+        <FormField label="Account">
           <input
             type="text"
-            required
             className="w-full border rounded px-3 py-2"
             value={formData.account}
             onChange={(e) => handleChange('account', e.target.value)}
           />
         </FormField>
 
-        <FormField label="Name" required>
+        <FormField label="Name">
           <input
             type="text"
-            required
             className="w-full border rounded px-3 py-2"
             value={formData.name}
             onChange={(e) => handleChange('name', e.target.value)}
           />
         </FormField>
 
-        <FormField label="City" required>
+        <FormField label="City">
           <input
             type="text"
-            required
             className="w-full border rounded px-3 py-2"
             value={formData.city}
             onChange={(e) => handleChange('city', e.target.value)}
           />
         </FormField>
 
-        <FormField label="Address" required>
+        <FormField label="Address">
           <input
             type="text"
-            required
             className="w-full border rounded px-3 py-2"
             value={formData.address}
             onChange={(e) => handleChange('address', e.target.value)}
           />
         </FormField>
 
-        <FormField label="Project" required>
+        <FormField label="Project">
           <input
             type="text"
-            required
             className="w-full border rounded px-3 py-2"
             value={formData.project}
             onChange={(e) => handleChange('project', e.target.value)}
           />
         </FormField>
 
-        <FormField label="Division" required>
+        <FormField label="Division">
           <input
             type="text"
-            required
             className="w-full border rounded px-3 py-2"
             value={formData.division}
             onChange={(e) => handleChange('division', e.target.value)}
           />
         </FormField>
 
-        <FormField label="Meter Number" required>
+        <FormField label="Meter Number">
           <input
             type="text"
-            required
             className="w-full border rounded px-3 py-2"
             value={formData.meterNumber}
             onChange={(e) => handleChange('meterNumber', e.target.value)}
           />
         </FormField>
 
-        <FormField label="Date" required>
+        <FormField label="Date">
           <input
             type="date"
-            required
             className="w-full border rounded px-3 py-2"
             value={formData.date}
             onChange={(e) => handleChange('date', e.target.value)}

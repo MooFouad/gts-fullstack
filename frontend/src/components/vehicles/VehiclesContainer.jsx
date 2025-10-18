@@ -106,6 +106,13 @@ const VehiclesContainer = () => {
   };
 
   const handleAbsherSync = async () => {
+    // Check if user is logged in first
+    const token = localStorage.getItem('token');
+    if (!token) {
+      alert('⚠️ يجب تسجيل الدخول أولاً!\n\nالرجاء تسجيل الدخول ثم المحاولة مرة أخرى.');
+      return;
+    }
+
     if (!window.confirm('هل أنت متأكد من رغبتك في مزامنة جميع المركبات مع API أبشر؟\n\nسيتم تحديث بيانات المركبات التي لها رقم لوحة ورقم تسلسلي.')) {
       return;
     }
@@ -114,20 +121,67 @@ const VehiclesContainer = () => {
     setSyncResult(null);
 
     try {
-      const token = localStorage.getItem('token');
       const response = await axios.post(`${API_URL}/absher/sync`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
       setSyncResult(response.data.data);
 
-      if (response.data.success) {
-        alert(`✅ تمت المزامنة بنجاح!\n\nتم تحديث: ${response.data.data.successful} مركبة\nفشل: ${response.data.data.failed} مركبة`);
+      // Show results regardless of partial success
+      const results = response.data.data;
+
+      if (results.successful > 0) {
+        // At least some vehicles synced successfully
+        let message = `✅ تمت المزامنة!\n\n`;
+        message += `تم تحديث: ${results.successful} مركبة\n`;
+        message += `فشل: ${results.failed} مركبة\n`;
+
+        if (results.failed > 0) {
+          message += `\n⚠️ بعض المركبات فشلت في المزامنة.\n`;
+          message += `يرجى التحقق من تفاصيل الأخطاء أدناه.`;
+        }
+
+        alert(message);
         await refreshData(); // Refresh to show updated data
+      } else if (results.total > 0) {
+        // All vehicles failed
+        alert(`❌ فشلت المزامنة لجميع المركبات (${results.total})\n\n` +
+              `السبب المحتمل:\n` +
+              `- عدم القدرة على الاتصال بـ Absher API\n` +
+              `- تحقق من اتصال الإنترنت\n` +
+              `- قد تحتاج إلى VPN للوصول إلى الخدمة\n\n` +
+              `يرجى مراجعة تفاصيل الأخطاء أدناه.`);
       }
     } catch (error) {
       console.error('Absher sync error:', error);
-      alert('❌ حدث خطأ أثناء المزامنة مع أبشر:\n' + (error.response?.data?.message || error.message));
+
+      // Better error message handling
+      let errorMessage = '❌ حدث خطأ أثناء المزامنة مع أبشر:\n\n';
+
+      // Check for authentication errors
+      if (error.response?.status === 401 || error.response?.data?.message?.includes('token')) {
+        errorMessage = '🔐 انتهت جلسة العمل!\n\n';
+        errorMessage += 'الرجاء تسجيل الدخول مرة أخرى ثم المحاولة.';
+
+        // Optionally clear token and redirect to login
+        localStorage.removeItem('token');
+        // You can redirect to login page here if needed
+        // window.location.href = '/login';
+      } else if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+        errorMessage += 'انتهت مهلة الاتصال. يرجى التحقق من:\n';
+        errorMessage += '1. اتصال الإنترنت\n';
+        errorMessage += '2. إعدادات VPN (قد تحتاج VPN للوصول إلى Absher API)\n';
+        errorMessage += '3. جدار الحماية أو Proxy';
+      } else if (error.code === 'ERR_NETWORK' || error.message.includes('Network Error')) {
+        errorMessage += 'خطأ في الشبكة. يرجى التحقق من:\n';
+        errorMessage += '1. اتصال الإنترنت\n';
+        errorMessage += '2. خادم Backend يعمل\n';
+        errorMessage += '3. إعدادات CORS';
+      } else {
+        errorMessage += error.response?.data?.message || error.message;
+      }
+
+      alert(errorMessage);
     } finally {
       setSyncing(false);
     }

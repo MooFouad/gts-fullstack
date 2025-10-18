@@ -2,40 +2,31 @@ const mongoose = require('mongoose');
 
 const electricitySchema = new mongoose.Schema({
   no: {
-    type: String,
-    required: true
+    type: String
   },
   account: {
-    type: String,
-    required: true
+    type: String
   },
   name: {
-    type: String,
-    required: true
+    type: String
   },
   city: {
-    type: String,
-    required: true
+    type: String
   },
   address: {
-    type: String,
-    required: true
+    type: String
   },
   project: {
-    type: String,
-    required: true
+    type: String
   },
   division: {
-    type: String,
-    required: true
+    type: String
   },
   meterNumber: {
-    type: String,
-    required: true
+    type: String
   },
   date: {
-    type: String,
-    required: true
+    type: String
   },
   attachments: {
     type: Array
